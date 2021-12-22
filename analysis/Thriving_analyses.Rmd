@@ -426,7 +426,6 @@ compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>
 ```
 
 
-
 # Multilevel CFA
 
 ```{r}
@@ -696,7 +695,8 @@ names(gmc_df) <- paste0("GMC_", names(gmc_df))
 # group mean center change variables for use in multilevel model
 cwc_df <- longer_comp %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, thriv, vitality, learn, set)
 cwc_df <- as.data.frame(lapply(cwc_df[-1], center, type = "CWC", cluster = cwc_df$ID))
-cwc_df <- cwc_df %>% dplyr::select(matches("CWC|ID|set"))
+names(cwc_df) <- paste0("CWC_", names(cwc_df))
+cwc_df$ID <- longer_comp$ID
 
 # make one dataframe that contains mean values, and centered variables
 longer_comp <- cbind(dat, cwc_df, gmc_df)
@@ -712,6 +712,7 @@ compute_icc(m0_phys) %>%
 
 compute_icc(m0_ment) %>%
   round(3)
+
 ```
 
 ## Multilevel direct effects 
@@ -775,8 +776,6 @@ fit1 <- sem(model, data = longer, cluster = "ID",
 std.lv = TRUE, verbose = FALSE)
 
 summary(fit1, fit.measures=TRUE)
-
-names(longer)
 
 ```
 
@@ -866,7 +865,7 @@ MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("X","Y","X2","XY","Y2"),
                           xlab="Vitality",ylab="Learning",zlab="Physical Health")
 # 
 # dev.off()
-
+names(longer_comp)
 ```
 
 ### Mental health by vitality and learning, and thriving, without interaction and polynomial

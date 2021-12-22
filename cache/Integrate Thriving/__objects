@@ -6,6 +6,6 @@ unnamed-chunk-6
 unnamed-chunk-7	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
 unnamed-chunk-8	dataset	fit	longer	model
 unnamed-chunk-9	
-unnamed-chunk-10	aggregate_df	Center	compute_icc	cwc_df	dat	dataframe	gmc_df	is.nan.data.frame	longer_comp	m0_ment	m0_phys
+unnamed-chunk-10	aggregate_df	cwc_df	dat	dataframe	gmc_df	is.nan.data.frame	longer_comp	m0_ment	m0_phys
 unnamed-chunk-11	fit1	model
 unnamed-chunk-12	mphys_randomthriv	mphys_randomX_Y	std_coef_phys_XY	stdCoef.merMod

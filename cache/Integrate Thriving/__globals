@@ -6,6 +6,6 @@ unnamed-chunk-6
 unnamed-chunk-7	::	@	%>%	as.character	c	cfa	compareFit	dataset	kable	kable_classic	library	list	matches	measEq.syntax	reliability
 unnamed-chunk-8	%>%	$<-	c	ICC	library	matches	nrow	pivot_longer	sem	seq.int	summary
 unnamed-chunk-9	anova	c	cfa	compareFit	lavInspect	library	longer	parameterEstimates	reliability	summary
-unnamed-chunk-10	::	.	[<-	%>%	^	~	$	$<-	as.data.frame	as.numeric	aut	c	cbind	center	colnames	colnames<-	comp_df	csup	ddply	demands	do.call	drop_na	F	full_join	funs	group_by	gsub	ID	is.nan	lapply	learn	library	lmer	matches	mean	na	names	names<-	nrow	pa	paste0	pivot_longer	return	round	seq.int	set	sf12mcs	sf12pcs	ssup	summarise_at	T	T1_age	T1_edu	T1_sex	T1_tenure_org	thriv	VarCorr	vars	vitality	write.xlsx2	x.c	y.c
-unnamed-chunk-11	longer	names	sem	summary
+unnamed-chunk-10	::	.	[<-	%>%	~	$	$<-	as.data.frame	as.numeric	aut	c	cbind	center	Center	colnames	colnames<-	comp_df	compute_icc	csup	ddply	demands	do.call	drop_na	F	full_join	funs	group_by	ID	is.nan	lapply	learn	lmer	matches	mean	mgsub	mutate	na	names	names<-	nrow	pa	paste0	pivot_longer	round	seq.int	set	sf12mcs	sf12pcs	ssup	summarise_at	T	T1_age	T1_edu	T1_sex	T1_tenure_org	thriv	vars	vitality	x.c	y.c
+unnamed-chunk-11	longer	sem	summary
 unnamed-chunk-12	~	apply	cat	check_collinearity	coef	data.frame	F	fixef	getME	library	lmer	lmerControl	longer_comp	r.squaredGLMM	return	round	sd	summary	T	tab_model
