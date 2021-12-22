@@ -1,0 +1,1370 @@
+---
+title: "Thriving LMS"
+author: "Anne"
+date: "7/28/2021"
+output: html_document
+---
+
+# Preparation 
+```{r}
+# rename datasets
+dataset1 = Respondi_WavesCombined_Thriving
+dataset3 = Respondi_WavesCombined_Health_1
+
+# select certain columns that are relevant
+dataset <- dataset3 %>% dplyr::select(matches("ID|T1_age|sex|edu|industry|tenure|vitality|learn|_sf12..|_pa|_na|demands|_aut|ssup|csup")) %>% dplyr::select(-matches("auth|agency|orgid")) %>% remove_all_labels(.)
+
+names(dataset) <- sub(".*\\.", "", names(dataset))
+
+## reverse code learning4,vitality3
+cols = dataset %>% dplyr::select(matches("learn4|vitality3")) %>% names(.)
+
+# Reverse scores in the desired columns 
+dataset[ ,cols] = 6 - dataset[ ,cols]
+
+# assign eduation category
+dataset <- within(dataset, T1_edu[T1_edu == 2 | T1_edu == 3 | T1_edu == 4 ] <- 2)
+dataset <- within(dataset, T1_edu[T1_edu == 5 | T1_edu == 6]  <- 3)
+dataset <- within(dataset, T1_edu[T1_edu == 7]  <- 4)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'abgeschlossene Ausbildung'] <- 2)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Medizinische Fachschule'] <- 3)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Promotion'] <- 5)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Fachhochschulabschluss'] <- 3)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'abgeschlossene Berufsausbildung'] <- 2)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Abitur und abgeschlossene Berufsausbildung'] <- 3)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Handelsfachwirt'] <- 3)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Staatsexamen'] <- 4)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Hochschulabschluss, Promotion'] <- 5)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Betriebswirt (Verwaltungs- und Wirtschaftsakademie)'] <- 3)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Industriemeister'] <- 2)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Promotion'] <- 5)
+dataset <- within(dataset, T1_edu[T1_edu_alt == 'Doktor'] <- 5)
+
+dataset <- within(dataset, T1_edu[T1_edu == 8] <- NA)
+
+```
+
+# Reliabilities 
+
+```{r}
+# recode sf 12 items
+dataset <- dataset %>% mutate_at(vars(matches("T._sf12..")), ~ (na_if(.,-99)))
+dataset <- dataset %>% mutate_at(vars(matches("T._sf12..")), ~(./10))
+
+# create thriving items
+dataset <- dataset %>% 
+  bind_cols(dataset %>% dplyr::select(ends_with('vitality1')) %>% rename_all( ~ str_replace(., "vitality1", "thriv1")) ) %>%
+  bind_cols(dataset %>% dplyr::select(ends_with('vitality2')) %>% rename_all( ~ str_replace(., "vitality2", "thriv2")) ) %>%
+  bind_cols(dataset %>% dplyr::select(ends_with('vitality5')) %>% rename_all( ~ str_replace(., "vitality5", "thriv3")) ) %>%
+  bind_cols(dataset %>% dplyr::select(ends_with('learn1')) %>% rename_all( ~ str_replace(., "learn1", "thriv4")) ) %>%
+  bind_cols(dataset %>% dplyr::select(ends_with('learn2')) %>% rename_all( ~ str_replace(., "learn2", "thriv5")) ) %>%
+  bind_cols(dataset %>% dplyr::select(ends_with('learn3')) %>% rename_all( ~ str_replace(., "learn3", "thriv6")) )
+
+# create dataset with demographics for later use in correlation table
+demo_dat <- dataset %>%
+  dplyr::select(matches("T1_", ignore.case = T))
+
+comp_dat_sel <- dataset %>%
+  dplyr::select(!matches("T1_|learn4|learn5|vitality3|vitality4", ignore.case = T))
+
+alph_dat_sel <- dataset %>%
+  dplyr::select(!matches("T1_|ID|sf12|learn4|learn5|vitality3|vitality4", ignore.case = T))
+
+comp_split <- comp_dat_sel %>%
+  split.default(sub("\\d$", "", names(comp_dat_sel))) 
+
+alph_split <- alph_dat_sel %>% 
+  split.default(sub("\\d$", "", names(alph_dat_sel))) 
+
+comp <- purrr::map(comp_split, ~ multicon::composite(.x, nomiss = 0.8), data = .x)
+alph <- purrr::map(alph_split, ~ psych::alpha(.x), data = .x) %>%
+  purrr::map(~ .x$total)
+
+# add demos and single items 
+comp_df <- do.call("cbind", comp) %>%
+  cbind(demo_dat, .) 
+alph_df <- do.call("rbind", alph) %>% round(., 2)
+
+alph_df
+```
+
+# Correlation table full data set
+
+```{r}
+cor_tab <- comp_df %>% dplyr::select(matches("_age|_sex|edu$|tenure_org|thriv|vita|learn|pa|_na|aut|demands|csup|ssup|sf12pcs|sf12mcs"))
+
+corstar <- data.frame(corstars(cor_tab, removeTriangle = "upper", result="none"))
+Mean <- round(colMeans(cor_tab, na.rm =T),2)
+SD <- round(apply(cor_tab, 2, sd, na.rm = T),2)
+mean_sd <- as.data.frame(rbind(Mean, SD)) %>% t()
+
+corstar_select <- cbind(mean_sd, corstar)
+
+res2 <- rcorr(as.matrix(cor_tab))
+range(res2$n)
+
+names(corstar_select) <-sub("sf12","", names(corstar_select))  
+rownames(corstar_select) <-sub("sf12","", rownames(corstar_select))  
+names(corstar_select) <- substr(names(corstar_select), start = 1, stop = 5)
+
+names(corstar_select) <- c("M", "SD", as.character(1:47))
+
+rownames(corstar_select) <- substr(rownames(corstar_select), start = 1, stop = 5)
+rownames(corstar_select) <- sub("_","", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T2","T1", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T3","T2", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T4","T3", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T5","T4", rownames(corstar_select))  
+rownames(corstar_select) <- sub("vi","Vi", rownames(corstar_select))  
+rownames(corstar_select) <- sub("le","Le", rownames(corstar_select))  
+rownames(corstar_select) <- sub("th","Th", rownames(corstar_select))  
+rownames(corstar_select) <- sub("pa","PA", rownames(corstar_select))  
+rownames(corstar_select) <- sub("na","NA", rownames(corstar_select))  
+rownames(corstar_select) <- sub("de","De", rownames(corstar_select))  
+rownames(corstar_select) <- sub("au","Au", rownames(corstar_select))  
+rownames(corstar_select) <- sub("cs","CS", rownames(corstar_select))  
+rownames(corstar_select) <- sub("ss","SS", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1ag","Age", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1se","Gen.", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1ed","Edu.", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1te","Ten.", rownames(corstar_select))  
+rownames(corstar_select) <- sub("pc","PH", rownames(corstar_select))  
+rownames(corstar_select) <- sub("mc","MH", rownames(corstar_select))  
+
+tf <- paste0(getwd(),"/try.docx")
+ 
+html_table <- flextable(corstar_select %>% rownames_to_column("Var.")) %>%
+   autofit()
+ 
+html_table <- fontsize(html_table, size = 6, part = "all")
+html_table <- width(html_table, width = 0.2)
+html_table
+doc <- read_docx() %>%
+   body_add_flextable(value = html_table, split = TRUE) %>%
+   body_end_section_landscape() %>% # a landscape section is ending here
+   print( target = "my_table.docx" )
+
+
+res2<-rcorr(as.matrix(cor_tab))
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+flat_cor <-flattenCorrMatrix(res2$r, res2$P) 
+flat_cor$p <- round(flat_cor$p, 3)
+flat_cor[order(flat_cor$p),] 
+flat_cor %>% .[grep("sf12", .$column), ] %>% .[.$p <= 0.05, ]
+```
+
+# Correlation table model variables
+
+```{r}
+#### Model variables and demos
+cor_tab <- comp_df %>% dplyr::select(matches("_age|_sex|edu$|tenure_org|thriv|vita|learn|sf12pcs|sf12mcs")) 
+
+corstar <- data.frame(corstars(cor_tab, removeTriangle = "upper", result="none"))
+
+Mean <- round(colMeans(cor_tab, na.rm =T),2)
+SD <- round(apply(cor_tab, 2, sd, na.rm = T),2)
+mean_sd <- as.data.frame(rbind(Mean, SD)) %>% t()
+
+corstar_select <- cbind(mean_sd, corstar)
+
+res2 <- rcorr(as.matrix(cor_tab))
+range(res2$n)
+
+names(corstar_select) <-sub("sf12","", names(corstar_select))  
+rownames(corstar_select) <-sub("sf12","", rownames(corstar_select))  
+names(corstar_select) <- substr(names(corstar_select), start = 1, stop = 5)
+
+names(corstar_select) <- c("M", "SD", "1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.", "10.", "11.", "12.", "13.", "14.",
+                           "15.", "16.", "17.", "18.", "19.", "20.", "21.", "22.", "23.")
+
+rownames(corstar_select) <- substr(rownames(corstar_select), start = 1, stop = 5)
+rownames(corstar_select) <- sub("_","", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T2","T1", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T3","T2", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T4","T3", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T5","T4", rownames(corstar_select))  
+rownames(corstar_select) <- sub("vi","Vi", rownames(corstar_select))  
+rownames(corstar_select) <- sub("le","Le", rownames(corstar_select))  
+rownames(corstar_select) <- sub("th","Th", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1ag","Age", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1se","Gen.", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1ed","Edu.", rownames(corstar_select))  
+rownames(corstar_select) <- sub("T1te","Ten.", rownames(corstar_select))  
+rownames(corstar_select) <- sub("pc","PH", rownames(corstar_select))  
+rownames(corstar_select) <- sub("mc","MH", rownames(corstar_select))  
+ 
+tf <- paste0(getwd(),"/try.docx")
+ 
+library(officer)
+html_table <- flextable(corstar_select %>% rownames_to_column("Var.")) %>%
+   autofit()
+ 
+html_table <- fontsize(html_table, size = 8, part = "all")
+html_table <- width(html_table, width = 0.4)
+html_table
+doc <- read_docx() %>%
+   body_add_flextable(value = html_table, split = TRUE) %>%
+   body_end_section_landscape() %>% # a landscape section is ending here
+   print( target = "my_table_short.docx" )
+
+res2 <- rcorr(as.matrix(cor_tab))
+range(res2$n)
+
+library(Hmisc)
+res2<-rcorr(as.matrix(cor_tab))
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+flat_cor <-flattenCorrMatrix(res2$r, res2$P) 
+flat_cor$p <- round(flat_cor$p, 3)
+#flat_cor[order(flat_cor$p),] 
+```
+
+# Discrepancy assessment
+
+```{r eval = F}
+## standardize learning2 and vitality2
+# library(psycho)
+# library(tidyverse)
+# library(robustHD)
+# 
+# z_learn <- dataframe$T2_learn_comp  %>% 
+#   standardize() 
+# 
+# z_vital <- dataframe$T2_vitality_comp  %>% 
+#   standardize() 
+# 
+# stand_df <- cbind(z_learn,z_vital)
+# absChange <- z_learn - z_vital
+# 
+# stand_df <- cbind(absChange,z_learn, z_vital)
+# stand_df <- as.data.frame(stand_df)
+# 
+# sum(!is.na(absChange))
+# 
+# 
+# ## see discrpancy - learn  0.5 sd above vit
+# above <-
+# stand_df %>% filter(absChange > 0.5)
+# nrow(above)
+# 
+# ## see discrpancy - learn  0.5 sd below vit
+# below <-
+#   stand_df %>% filter(absChange < -0.5)
+# nrow(below)
+# 
+# discr <- cbind(dataframe, stand_df)
+# below_full <-
+#   discr %>% filter(absChange < -0.5)
+# 
+# 
+# discr <- cbind(dataframe, stand_df)
+# above_full <-
+#   discr %>% filter(absChange > 0.5)
+# 
+# mean(above_full$T2_vitality_comp)
+# 
+# agree_full <- filter(discr, between(absChange, -0.5, 0.5))
+# 
+# mean(agree_full$T2_learn_comp)
+# mean(agree_full$T2_vitality_comp)
+# mean(below_full$T2_learn_comp)
+# mean(below_full$T2_vitality_comp)
+# mean(above_full$T2_learn_comp)
+# mean(above_full$T2_vitality_comp)
+# 
+# nrow(agree_full)
+# nrow(below_full)
+# nrow(above_full)
+# 
+# names(dataset)
+# names(dataframe)
+# 
+# T2_MCS <- dataset$T2_sf12mcs
+# T3_MCS <- dataset$T3_sf12mcs
+# T4_MCS <- dataset$T4_sf12mcs
+# T5_MCS <- dataset$T5_sf12mcs
+# T2_PCS <- dataset$T2_sf12pcs
+# T3_PCS <- dataset$T3_sf12pcs
+# T4_PCS <- dataset$T4_sf12pcs
+# T5_PCS <- dataset$T5_sf12pcs
+# 
+# dataframe$T2_MCS <- T2_MCS
+# dataframe$T3_MCS <- T3_MCS
+# dataframe$T4_MCS <- T4_MCS
+# dataframe$T5_MCS <- T5_MCS
+# dataframe$T2_PCS <- T2_PCS
+# dataframe$T3_PCS <- T3_PCS
+# dataframe$T4_PCS <- T4_PCS
+# dataframe$T5_PCS <- T5_PCS
+
+```
+
+# Measurement invariance
+
+```{r}
+model_configural <- '
+Vita_T1     =~ T2_vitality1 + T2_vitality2 + T2_vitality5
+Vita_T2     =~ T3_vitality1 + T3_vitality2 + T3_vitality5
+Vita_T3     =~ T4_vitality1 + T4_vitality2 + T4_vitality5
+Vita_T4     =~ T5_vitality1 + T5_vitality2 + T5_vitality5
+
+
+Learn_T1    =~ T2_learn1 + T2_learn2 + T2_learn3 
+Learn_T2    =~ T3_learn1 + T3_learn2 + T3_learn3 
+Learn_T3    =~ T4_learn1 + T4_learn2 + T4_learn3 
+Learn_T4    =~ T5_learn1 + T5_learn2 + T5_learn3 
+
+'
+
+
+longFacNames <- list(
+  VITA =     c("Vita_T1","Vita_T2","Vita_T3", "Vita_T4"),
+  LEARN =    c("Learn_T1","Learn_T2","Learn_T3", "Learn_T4"))
+
+
+syntax.config <- measEq.syntax(configural.model = model_configural,
+                               data = dataset,
+                               ID.fac = "std.lv",
+                               longFacNames = longFacNames,
+                               auto="all")
+
+mod.config <- as.character(syntax.config)   # save as text
+
+fit.config <- cfa(mod.config, 
+                  data = dataset, 
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+library(kableExtra)
+reliability(fit.config) %>%
+  kable(digits = 3) %>%
+  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
+
+
+syntax.metric <- measEq.syntax(configural.model = model_configural, 
+                               data = dataset,
+                               ID.fac = "std.lv", 
+                               longFacNames = longFacNames,
+                               group.equal = c("loadings"),
+                               long.equal  = c("loadings"),
+                               auto="all")
+
+mod.metric <- as.character(syntax.metric)   # save as text
+
+## fit model to data
+fit.metric <- cfa(mod.metric, 
+                  data = dataset,
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+
+syntax.strong <- measEq.syntax(configural.model = model_configural, 
+                               data = dataset,
+                               parameterization = "theta",
+                               ID.fac = "std.lv", 
+                               longFacNames = longFacNames,
+                               group.equal = c("loadings", "intercepts"),
+                               long.equal  = c("loadings", "intercepts"),
+                               auto="all")
+
+mod.strong<- as.character(syntax.strong)    # save as text
+
+## fit model to data
+fit.strong<- cfa(mod.strong, 
+                  data = dataset,
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+
+syntax.strict <- measEq.syntax(configural.model = model_configural, 
+                               data = dataset,
+                               ID.fac = "std.lv", 
+                               longFacNames = longFacNames,
+                               group.equal = c("loadings", "intercepts", "means"),
+                               long.equal  = c("loadings", "intercepts", "means"),
+                               auto="all")
+
+mod.strict<- as.character(syntax.strict)   # save as text
+
+## fit model to data
+fit.strict<- cfa(mod.strict, 
+                  data = dataset, 
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+
+compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@nested %>%
+  kable(digits = 3) %>%
+  kable_classic(full_width=FALSE, html_font = "CMU Serif")
+
+
+compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>%
+  dplyr::select(matches("chisq|df|pvalue|cfi|tli|rmsea|srmr")) %>%
+  kable(digits = 3) %>%
+  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
+
+
+```
+
+
+
+# Multilevel CFA
+
+```{r}
+dataset$ID <- seq.int(nrow(dataset))
+
+longer <- dataset %>% 
+ pivot_longer(matches("T2|T3|T4|T5"),
+    names_pattern = "(T._)(.*)", 
+   names_to = c( "set", ".value")
+ )
+
+# Calculating ICC
+library("merTools")
+(ICC(outcome = "vitality1", group = "ID", data = longer) +
+ICC(outcome = "vitality2", group = "ID", data = longer) +
+ICC(outcome = "vitality5", group = "ID", data = longer) +
+ICC(outcome = "learn1", group = "ID", data = longer) +
+ICC(outcome = "learn2", group = "ID", data = longer) +
+ICC(outcome = "learn3", group = "ID", data = longer)) / 6
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5
+        learn_w =~ learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+    
+
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5
+        learn_b =~ learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+'
+
+fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit, fit.measures=TRUE)
+
+```
+
+# Multilevel invariance
+
+```{r eval = F}
+## Configural invariance (same model configuration across levels)
+
+# write.xlsx2(
+#   longer,
+#   "longer.xlsx",
+#   col.names = TRUE,
+#   row.names = TRUE,
+#   append = FALSE,
+#   password = NULL
+# )
+library(lavaan)
+mod.ml.config <- ' 
+level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5
+        learn_w =~ learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+  
+level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5
+        learn_b =~ learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+'
+fit.ml.config <- cfa(mod.ml.config, data = longer, cluster = "ID", 
+                  missing = "listwise", # not yet available in 0.6-9.1642
+                  std.lv = TRUE,
+                  estimator = "MLR") # variables are not normally distributed:
+##                                     for (i in lavNames(fit)) hist(dat[[i]])
+summary(fit.ml.config, std = TRUE, fit = TRUE)
+lavInspect(fit.ml.config, "icc") # ICCs per indicator
+
+mod.ml.config_alt1 <- ' 
+level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+  
+level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+'
+fit.ml.config_alt1 <- cfa(mod.ml.config_alt1, data = longer, cluster = "ID", 
+                  missing = "listwise", # not yet available in 0.6-9.1642
+                  std.lv = TRUE,
+                  estimator = "MLR") # variables are not normally distributed:
+##                                     for (i in lavNames(fit)) hist(dat[[i]])
+summary(fit.ml.config_alt1, std = TRUE, fit = TRUE)
+lavInspect(fit.ml.config_alt1, "icc") # ICCs per indicator
+
+mod.ml.config_alt2 <- ' 
+level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5
+        learn_w =~ learn1 + learn2 + learn3
+        phys_w  =~ a*sf12pcs + a*sf12mcs
+        phys_w ~~ 1*phys_w
+  
+level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5
+        learn_b =~ learn1 + learn2 + learn3
+        phys_b  =~ b*sf12pcs + b*sf12mcs
+        phys_b ~~ 1*phys_b
+        
+'
+fit.ml.config_alt2 <- cfa(mod.ml.config_alt2, data = longer, cluster = "ID", 
+                  missing = "listwise", # not yet available in 0.6-9.1642
+                  std.lv = TRUE,
+                  estimator = "MLR") # variables are not normally distributed:
+##                                     for (i in lavNames(fit)) hist(dat[[i]])
+summary(fit.ml.config_alt2, std = TRUE, fit = TRUE)
+lavInspect(fit.ml.config_alt2, "icc") # ICCs per indicator
+
+
+mod.ml.config_alt3 <- ' 
+level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + sf12mcs
+        learn_w =~ learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        sf12pcs ~~ 0*sf12pcs
+
+level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + sf12mcs
+        learn_b =~ learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        sf12pcs ~~ 0*sf12pcs
+'
+fit.ml.config_alt3 <- cfa(mod.ml.config_alt3, data = longer, cluster = "ID", 
+                  missing = "listwise", # not yet available in 0.6-9.1642
+                  std.lv = TRUE,
+                  estimator = "MLR") # variables are not normally distributed:
+##                                     for (i in lavNames(fit)) hist(dat[[i]])
+summary(fit.ml.config_alt3, std = TRUE, fit = TRUE)
+lavInspect(fit.ml.config_alt3, "icc") # ICCs per indicator
+
+anova(fit.ml.config, fit.ml.config_alt1, fit.ml.config_alt3)
+
+## Metric invariance across clusters == metric invariance across levels
+
+mod.ml.metric <- 'level: 1
+        vita_w  =~ L1*vitality1 + L2*vitality2 + L3*vitality5
+        learn_w =~ L4*learn1 + L5*learn2 + L6*learn3
+        phys_w  =~ L7*sf12pcs
+        ment_w  =~ L8*sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+  
+  ## free and label variances to define factor ICC
+    vita_w ~~ NA*vita_w + wvita*vita_w
+    learn_w ~~ NA*learn_w + wlearn*learn_w    #no variance for single indicator health outcomes!
+
+  
+level: 2
+        vita_b  =~ L1*vitality1 + L2*vitality2 + L3*vitality5
+        learn_b =~ L4*learn1 + L5*learn2 + L6*learn3
+        phys_b  =~ L7*sf12pcs
+        ment_b  =~ L8*sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+  
+  ## free and label variances to define factor ICC
+    vita_b ~~ NA*vita_b + bvita*vita_b
+    learn_b ~~ NA*learn_b + blearn*learn_b    #no variance for single indicator health outcomes!
+
+  ## constrain between-level variances to == ICCs
+    bvita == 1 - wvita
+    blearn == 1 - wlearn
+'
+fit.ml.metric <- cfa(mod.ml.metric, data = longer, cluster = "ID", 
+                     missing = "FIML", # not yet available in 0.6-9.1642
+                     std.lv = TRUE, estimator = "MLR") 
+summary(fit.ml.metric, std = TRUE, fit = TRUE) 
+## compare "Std.all" to STDYX in Mplus
+## Note: Level-2 residual variances are nearly zero, although 4 of 6 are
+##       statistically significant. Large N yields high power for small effects.
+
+
+## Scalar invariance across clusters implies Level-2 residual variances == 0
+
+mod.ml.scalar <- ' # simply append to metric-invariance script
+  vitality1  ~~ 0*vitality1  
+  vitality2  ~~ 0*vitality2  
+  vitality5~~ 0*vitality5
+  learn1 ~~ 0*learn1 
+  learn2  ~~ 0*learn2  
+  learn3 ~~ 0*learn3 
+'
+fit.ml.scalar <- cfa(c(mod.ml.metric, mod.ml.scalar),
+                     data = longer, cluster = "ID",
+                     estimator = "MLR", # scaling correction factor undefined (also in Mplus)
+                     # missing = "FIML", # not yet available in 0.6-9.1642
+                     std.lv = TRUE) 
+summary(fit.ml.scalar, std = TRUE, fit = TRUE) 
+## error with MLR, so print fit and estimates separately:
+fit.ml.scalar
+parameterEstimates(fit.ml.scalar, standardized = TRUE, output = "pretty")
+
+
+## compare fit, excluding scalar model (robust chi-squared is missing)
+library(semTools)
+summary(compareFit(fit.ml.config, fit.ml.metric, fit.ml.scalar), fit.measures = c("cfi", "tli", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper", "srmr", "srmr_within", "srmr_between"))
+
+reliability(fit.ml.config, return.total = TRUE)
+```
+
+# Multilevel regression analyses
+
+## Preparation
+
+```{r}
+dataframe <- comp_df
+
+# assign ID variable
+dataframe$ID <- seq.int(nrow(dataframe))
+
+# create long format data frame for multilevel analysis
+longer_comp <- dataframe %>% 
+ pivot_longer(matches("T2|T3|T4|T5"),
+    names_pattern = "(T._)(.*)", 
+   names_to = c( "set", ".value")
+ ) %>% mutate(set = (as.numeric(mgsub(.$set, c("T", "_"), c("", "")))) - 2)
+
+## We use the function to prepare the data; the Level-2 indicator is
+## "ID"
+dat <- ddply(longer_comp,.var="ID",.fun=Center)
+is.nan.data.frame <- function(x)
+do.call(cbind, lapply(x, is.nan))
+dat[is.nan(dat)] <- NA
+
+# create thriving centered and thriving mean for use in multilevel RSA
+dat$thriv.c <- (dat$x.c + dat$y.c)/2
+dat$thriv.mean <- (dat$x.mean + dat$y.mean)/2
+
+dat <- dat %>% drop_na(x.c, y.c, thriv, sf12mcs, sf12pcs) %>% dplyr::select(matches("x.c|y.c|xy.c|x2.c|y2.c|thriv.c|.mean|sf12mcs|sf12pcs|vita|learn", ignore.case = F))
+
+longer_comp <- longer_comp %>% drop_na(vitality, learn, sf12mcs, sf12pcs) 
+
+# create aggregate_df for calculating means 
+aggregate_df <- longer_comp %>%
+  group_by(ID) %>%
+  summarise_at(vars(-set), funs(mean(., na.rm=TRUE))) %>% dplyr::select(ID, na, pa, thriv, demands, aut, csup, ssup, sf12pcs, sf12mcs, vitality, learn)
+
+names(aggregate_df) <- paste0(names(aggregate_df), ".mean")
+aggregate_df$ID <- aggregate_df$ID.mean
+colnames(aggregate_df)[4] <- "thriv_mean"
+
+# grand mean center static variables for use in multilevel model
+gmc_df <- longer_comp %>% dplyr::select(T1_age, T1_sex, T1_edu, T1_tenure_org)
+gmc_df[] <- lapply(gmc_df, function(x) center(x, type = "CGM", check = T))
+names(gmc_df) <- paste0("GMC_", names(gmc_df))
+
+# group mean center change variables for use in multilevel model
+cwc_df <- longer_comp %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, thriv, vitality, learn, set)
+cwc_df <- as.data.frame(lapply(cwc_df[-1], center, type = "CWC", cluster = cwc_df$ID))
+cwc_df <- cwc_df %>% dplyr::select(matches("CWC|ID|set"))
+
+# make one dataframe that contains mean values, and centered variables
+longer_comp <- cbind(dat, cwc_df, gmc_df)
+longer_comp <- full_join(longer_comp, aggregate_df, by = "ID")
+
+# estimating the null model using lme4
+m0_phys <- lmer(sf12pcs ~ 1 + (1|ID), longer_comp)
+m0_ment <- lmer(sf12mcs ~ 1 + (1|ID), longer_comp)
+
+# calculate ICC for physical and mental health
+compute_icc(m0_phys) %>%
+  round(3)
+
+compute_icc(m0_ment) %>%
+  round(3)
+```
+
+## Multilevel direct effects 
+
+```{r}
+model <- 'level: 1
+        vita_w  =~ L1*vitality1 + L2*vitality2 + L3*vitality5
+        learn_w =~ L4*learn1 + L5*learn2 + L6*learn3
+        phys_w  =~ L7*sf12pcs
+        ment_w  =~ L8*sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_w =~ na1 + na2 + na3 + na4 + na5
+        demands_w =~ demands1 + demands2 + demands3
+        aut_w =~ aut1 + aut2 + aut3 
+        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup 4
+        csup_w =~ csup1 + csup2 + csup3 + csup 4
+        
+      
+  ## free and label variances to define factor ICC
+    vita_w ~~ NA*vita_w + wvita*vita_w
+    learn_w ~~ NA*learn_w + wlearn*learn_w    #no variance for single indicator health outcomes!
+
+# direct effects
+phys_w ~ vita_w + learn_w + pa_w + na_w + demands_w + aut_w + ssup_w + csup_w 
+ment_w ~ vita_w + learn_w + pa_w + na_w + demands_w + aut_w + ssup_w + csup_w 
+
+level: 2
+        vita_b  =~ L1*vitality1 + L2*vitality2 + L3*vitality5
+        learn_b =~ L4*learn1 + L5*learn2 + L6*learn3
+        phys_b  =~ L7*sf12pcs
+        ment_b  =~ L8*sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+        age_b =~ T1_age
+        Edu_b =~ T1_edu
+        T1_age ~~ 0*T1_age
+        T1_edu ~~ 0*T1_edu
+        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_b =~ na1 + na2 + na3 + na4 + na5
+        demands_b =~ demands1 + demands2 + demands3
+        aut_b =~ aut1 + aut2 + aut3 
+        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup 4
+        csup_b =~ csup1 + csup2 + csup3 + csup 4
+  
+  ## free and label variances to define factor ICC
+    vita_b ~~ NA*vita_b + bvita*vita_b
+    learn_b ~~ NA*learn_b + blearn*learn_b    #no variance for single indicator health outcomes!
+
+  ## constrain between-level variances to == ICCs
+    bvita == 1 - wvita
+    blearn == 1 - wlearn
+    
+# direct effects
+phys_b ~ vita_b + learn_b + pa_b + na_b + demands_b + aut_b + ssup_b + csup_b + age_b + Edu_b
+ment_b ~ vita_b + learn_b + pa_b + na_b + demands_b + aut_b + ssup_b + csup_b + age_b + Edu_b 
+'
+
+fit1 <- sem(model, data = longer, cluster = "ID",
+std.lv = TRUE, verbose = FALSE)
+
+summary(fit1, fit.measures=TRUE)
+
+names(longer)
+
+```
+
+
+
+
+## RSA
+
+### Physical health by vitality and learning, and thriving, without interaction and polynomial
+
+```{r}
+library(RSA)
+mphys_randomX_Y <- lmer(sf12pcs ~1 +CWC_vitality+ CWC_learn +
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        vitality.mean + learn.mean + 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean +
+                        (1+CWC_vitality + CWC_learn|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
+
+stdCoef.merMod <- function(object) {
+  sdy <- sd(getME(object,"y"))
+  sdx <- apply(getME(object,"X"), 2, sd)
+  sc <- round(fixef(object)*sdx/sdy, 2)
+  se.fixef <- coef(summary(object))[,"Std. Error"]
+  se <- se.fixef*sdx/sdy
+  return(data.frame(stdcoef=sc))
+}
+
+std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
+
+cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
+cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
+
+check_collinearity(mphys_randomX_Y, sort = T)
+
+
+# Physical health by thriving
+mphys_randomthriv <- lmer(sf12pcs~1 +CWC_thriv+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + set +
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        thriv_mean + 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomthriv, show.ci = FALSE, show.se = TRUE)
+cat("R square marginal =" ,r.squaredGLMM(mphys_randomthriv)[1,1])
+cat("R square conditional =" ,r.squaredGLMM(mphys_randomthriv)[1,2])
+r.squaredGLMM(mphys_randomthriv)
+check_collinearity(mphys_randomthriv, sort = T)
+```
+
+### Physical health by vitality and learning with interaction and polynomial
+
+```{r}
+mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
+
+stdCoef.merMod <- function(object) {
+  sdy <- sd(getME(object,"y"))
+  sdx <- apply(getME(object,"X"), 2, sd)
+  sc <- round(fixef(object)*sdx/sdy, 2)
+  se.fixef <- coef(summary(object))[,"Std. Error"]
+  se <- se.fixef*sdx/sdy
+  return(data.frame(stdcoef=sc))
+}
+
+std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
+
+cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
+cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
+
+MLRSA_AverageSurface(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c","y.c",NA,NA,NA)) 
+check_collinearity(mphys_randomX_Y, sort = T)
+
+# PLOT THE ESTIMATED MODEL
+# pdf(file = "Physheal.pdf")
+MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("X","Y","X2","XY","Y2"),
+                          outcome="sf12pcs",data=longer_comp,
+                          xlab="Vitality",ylab="Learning",zlab="Physical Health")
+# 
+# dev.off()
+
+```
+
+### Mental health by vitality and learning, and thriving, without interaction and polynomial
+
+```{r}
+mphys_randomX_Y <- lmer(sf12mcs ~1 +CWC_vitality+ CWC_learn +
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        vitality.mean + learn.mean + 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean +
+                        (1+CWC_vitality + CWC_learn|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
+
+stdCoef.merMod <- function(object) {
+  sdy <- sd(getME(object,"y"))
+  sdx <- apply(getME(object,"X"), 2, sd)
+  sc <- round(fixef(object)*sdx/sdy, 2)
+  se.fixef <- coef(summary(object))[,"Std. Error"]
+  se <- se.fixef*sdx/sdy
+  return(data.frame(stdcoef=sc))
+}
+
+std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
+
+cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
+cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
+
+check_collinearity(mphys_randomX_Y, sort = T)
+
+
+# Physical health by thriving
+mphys_randomthriv <- lmer(sf12mcs~1 +CWC_thriv+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + set +
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        thriv_mean + 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomthriv, show.ci = FALSE, show.se = TRUE)
+cat("R square marginal =" ,r.squaredGLMM(mphys_randomthriv)[1,1])
+cat("R square conditional =" ,r.squaredGLMM(mphys_randomthriv)[1,2])
+r.squaredGLMM(mphys_randomthriv)
+check_collinearity(mphys_randomthriv, sort = T)
+```
+
+### Mental health by vitality and learning with interaction and polynomial
+
+```{r}
+mphys_randomX_Y <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
+
+stdCoef.merMod <- function(object) {
+  sdy <- sd(getME(object,"y"))
+  sdx <- apply(getME(object,"X"), 2, sd)
+  sc <- round(fixef(object)*sdx/sdy, 2)
+  se.fixef <- coef(summary(object))[,"Std. Error"]
+  se <- se.fixef*sdx/sdy
+  return(data.frame(stdcoef=sc))
+}
+
+std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
+
+cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
+cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
+
+MLRSA_AverageSurface(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c","y.c",NA,NA,NA)) 
+check_collinearity(mphys_randomX_Y, sort = T)
+
+# PLOT THE ESTIMATED MODEL
+# pdf(file = "Physheal.pdf")
+MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("X","Y","X2","XY","Y2"),
+                          outcome="sf12mcs",data=longer_comp,
+                          xlab="Vitality",ylab="Learning",zlab="Physical Health")
+# 
+# dev.off()
+
+```
+
+
+
+# Descriptives
+
+```{r}
+longer_comp_nona <- longer_comp %>% drop_na(X, Y, sf12mcs, sf12pcs) 
+longer_comp_nona <- longer_comp_nona[!duplicated(longer_comp_nona$ID),]
+
+library(janitor)
+# gender
+length(longer_comp_nona$T1_sex)
+tabyl(longer_comp_nona$T1_sex)
+
+#age
+#Ranges 
+# age range 18-90
+longer_comp_nona <- longer_comp_nona %>% replace_with_na(replace = list(T1_age = c(7)))
+
+summary(longer_comp_nona$T1_age)
+sd(longer_comp_nona$T1_age, na.rm =T)
+
+
+# education 
+longer_comp_nona
+tabyl(longer_comp_nona$T1_edu)
+
+### industries 
+tabyl(longer_comp_nona$T1_industry, sort = T) %>% arrange(desc(n))
+
+## job tenure 
+summary(longer_comp_nona$T1_tenure_org)
+sd(longer_comp_nona$T1_tenure_org, na.rm=T)
+
+names(longer_comp_nona)
+
+
+
+```
+
+# VIF
+
+```{r}
+## create dataframe with polynomials 
+
+X = dataframe$T2_vitality_comp
+Y = dataframe$T2_learn_comp
+
+# center vit and learn  at the grand mean 
+grandmean <- mean(c(X, Y), na.rm=T)
+X <- X-grandmean
+Y <- Y-grandmean
+
+
+# add polynomials 
+X2 <- X^2
+XY <- X*Y
+Y2 <- Y^2
+
+
+## add outcome variables 
+names(dataframe)
+data_vif = data.frame(dataframe$T2_phys_comp,  dataframe$T2_ment_comp, 
+                      dataframe$T3_phys_comp,  dataframe$T3_ment_comp, 
+                      X, Y, X2, XY, Y2
+                      )
+names(data_vif) <- sub(".*\\.", "", names(data_vif))
+
+library(car)
+names(data_vif)
+
+lm_phys <- lm(T3_phys_comp ~ X + Y + X2 + XY + Y2 + T2_phys_comp, data=data_vif)
+vif(lm_phys)
+
+lm_ment <- lm(T3_ment_comp ~ X + Y + X2 + XY + Y2 + T2_ment_comp, data=data_vif)
+vif(lm_ment)
+
+VIF <- cbind(vif(lm_phys), vif(lm_ment))
+VIF <- as.data.frame(VIF)
+which.min(apply(VIF, 1, max))
+which.min(apply(VIF, 2, max))
+which.max(apply(VIF, 1, max))
+which.max(apply(VIF, 2, max))
+
+lm_phys <- lm(T3_phys_comp ~ X + Y + X2 + XY + Y2 + T2_phys_comp, data=data_vif)
+vif(lm_phys)
+
+lm_ment <- lm(T3_ment_comp ~ X + Y + X2 + XY + Y2 + T2_ment_comp, data=data_vif)
+vif(lm_ment)
+
+VIF <- cbind(vif(lm_phys), vif(lm_ment))
+VIF <- as.data.frame(VIF)
+which.min(apply(VIF, 2, min))
+which.max(apply(VIF, 2, max))
+```
+
+# RI-CLPM
+
+```{r eval = FALSE}
+RICLPM1.ext3 <- '
+  
+  ################
+  # BETWEEN PART #
+  ################
+  
+  # Create between factors (random intercepts) for each indicator separately.
+  RIvitality1 =~ 1*T2_vitality1 + 1*T3_vitality1 + 1*T4_vitality1 + 1*T5_vitality1
+  RIvitality2 =~ 1*T2_vitality2 + 1*T3_vitality2 + 1*T4_vitality2 + 1*T5_vitality2
+  RIvitality3 =~ 1*T2_vitality5 + 1*T3_vitality5 + 1*T4_vitality5 + 1*T5_vitality5
+  
+  RIlearn1 =~ 1*T2_learn1 + 1*T3_learn1 + 1*T4_learn1 + 1*T5_learn1
+  RIlearn2 =~ 1*T2_learn2 + 1*T3_learn2 + 1*T4_learn1 + 1*T5_learn2
+  RIlearn3 =~ 1*T2_learn3 + 1*T3_learn3 + 1*T4_learn1 + 1*T5_learn3
+  
+  RIpa1 =~ 1*T2_pa1 + 1*T3_pa1 + 1*T4_pa1 + 1*T5_pa1
+  RIpa2 =~ 1*T2_pa2 + 1*T3_pa2 + 1*T4_pa1 + 1*T5_pa2
+  RIpa3 =~ 1*T2_pa3 + 1*T3_pa3 + 1*T4_pa1 + 1*T5_pa3
+  RIpa4 =~ 1*T2_pa4 + 1*T3_pa4 + 1*T4_pa4 + 1*T5_pa4
+  RIpa5 =~ 1*T2_pa5 + 1*T3_pa5 + 1*T4_pa5 + 1*T5_pa5
+  
+  RIna1 =~ 1*T2_na1 + 1*T3_na1 + 1*T4_na1 + 1*T5_na1
+  RIna2 =~ 1*T2_na2 + 1*T3_na2 + 1*T4_na1 + 1*T5_na2
+  RIna3 =~ 1*T2_na3 + 1*T3_na3 + 1*T4_na1 + 1*T5_na3
+  RIna4 =~ 1*T2_na4 + 1*T3_na4 + 1*T4_na4 + 1*T5_na4
+  RIna5 =~ 1*T2_na5 + 1*T3_na5 + 1*T4_na5 + 1*T5_na5
+  
+  RIdemands1 =~ 1*T2_demands1 + 1*T3_demands1 + 1*T4_demands1 + 1*T5_demands1
+  RIdemands2 =~ 1*T2_demands2 + 1*T3_demands2 + 1*T4_demands1 + 1*T5_demands2
+  RIdemands3 =~ 1*T2_demands3 + 1*T3_demands3 + 1*T4_demands1 + 1*T5_demands3
+
+  RIaut1 =~ 1*T2_aut1 + 1*T3_aut1 + 1*T4_aut1 + 1*T5_aut1
+  RIaut2 =~ 1*T2_aut2 + 1*T3_aut2 + 1*T4_aut1 + 1*T5_aut2
+  RIaut3 =~ 1*T2_aut3 + 1*T3_aut3 + 1*T4_aut1 + 1*T5_aut3
+  
+  RIcsup1 =~ 1*T2_csup1 + 1*T3_csup1 + 1*T4_csup1 + 1*T5_csup1
+  RIcsup2 =~ 1*T2_csup2 + 1*T3_csup2 + 1*T4_csup1 + 1*T5_csup2
+  RIcsup3 =~ 1*T2_csup3 + 1*T3_csup3 + 1*T4_csup1 + 1*T5_csup3
+  RIcsup4 =~ 1*T2_csup4 + 1*T3_csup4 + 1*T4_csup4 + 1*T5_csup4
+  
+  RIssup1 =~ 1*T2_ssup1 + 1*T3_ssup1 + 1*T4_ssup1 + 1*T5_ssup1
+  RIssup2 =~ 1*T2_ssup2 + 1*T3_ssup2 + 1*T4_ssup1 + 1*T5_ssup2
+  RIssup3 =~ 1*T2_ssup3 + 1*T3_ssup3 + 1*T4_ssup1 + 1*T5_ssup3
+  RIssup4 =~ 1*T2_ssup4 + 1*T3_ssup4 + 1*T4_ssup4 + 1*T5_ssup4
+  
+  RIphys =~ 1*T2_sf12pcs + 1*T3_sf12pcs + 1*T4_sf12pcs + 1*T5_sf12pcs
+  RIment =~ 1*T2_sf12mcs + 1*T3_sf12mcs + 1*T4_sf12mcs + 1*T5_sf12mcs
+  
+  RIvitality =~ RIvitality1 + RIvitality2 + RIvitality3
+  RIlearn =~ RIlearn1 + RIlearn2 + RIlearn3
+  RIpa =~ RIpa1 + RIpa2 + RIpa3 + RIpa4 + RIpa5
+  RIna =~ RIna1 + RIna2 + RIna3 + RIna4 + RIna5 
+  RIdemands =~ RIdemands1 + RIdemands2 + RIdemands3
+  RIaut =~ RIaut1 + RIaut2 + RIaut3
+  RIcsup =~ RIcsup1 + RIcsup2 + RIcsup3 + RIcsup4
+  RIssup =~ RIssup1 + RIssup2 + RIssup3 + RIssup4
+  
+  
+  RIphys ~~ RIment + RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
+  RIment ~~ RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
+  RIvitality ~~ RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
+  RIlearn ~~ RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
+  RIpa ~~ RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
+  RIna ~~ RIna + RIdemands + RIaut + RIcsup + RIssup
+  RIdemands ~~ RIdemands + RIaut + RIcsup + RIssup
+  RIaut ~~ RIaut + RIcsup + RIssup
+  RIcsup ~~ RIcsup + RIssup
+  RIssup ~~ RIssup
+  
+  RIvitality1 ~~ 0*RIvitality1
+  RIvitality2 ~~ 0*RIvitality2
+  RIvitality3 ~~ 0*RIvitality3
+  
+  RIlearn1 ~~ 0*RIlearn1
+  RIlearn2 ~~ 0*RIlearn2
+  RIlearn3 ~~ 0*RIlearn3  
+  
+  RIpa1 ~~ 0*RIpa1
+  RIpa2 ~~ 0*RIpa2
+  RIpa3 ~~ 0*RIpa3
+  RIpa4 ~~ 0*RIpa4
+  RIpa5 ~~ 0*RIpa5
+  
+  RIna1 ~~ 0*RIna1
+  RIna2 ~~ 0*RIna2
+  RIna3 ~~ 0*RIna3
+  RIna4 ~~ 0*RIna4
+  RIna5 ~~ 0*RIna5
+  
+  RIdemands1 ~~ 0*RIdemands1
+  RIdemands2 ~~ 0*RIdemands2
+  RIdemands3 ~~ 0*RIdemands3
+  
+  RIaut1 ~~ 0*RIaut1
+  RIaut2 ~~ 0*RIaut2
+  RIaut3 ~~ 0*RIaut3
+  
+  RIcsup1 ~~ 0*RIcsup1
+  RIcsup2 ~~ 0*RIcsup2
+  RIcsup3 ~~ 0*RIcsup3
+  RIcsup4 ~~ 0*RIcsup4
+  
+  RIssup1 ~~ 0*RIssup1
+  RIssup2 ~~ 0*RIssup2
+  RIssup3 ~~ 0*RIssup3
+  RIssup4 ~~ 0*RIssup4
+  
+  RIphys ~~ 0*RIphys
+  RIment ~~ 0*RIment
+  
+  
+  ##################################
+  # WITHIN PART: MEASUREMENT MODEL #
+  ##################################
+  
+  # Factor models for the four waves.
+  WvitalityT1 =~ v1*T2_vitality1 + v2*T2_vitality2 + v3*T2_vitality5
+  WvitalityT2 =~ v1*T3_vitality1 + v2*T3_vitality2 + v3*T3_vitality5
+  WvitalityT3 =~ v1*T4_vitality1 + v2*T4_vitality2 + v3*T4_vitality5
+  WvitalityT4 =~ v1*T5_vitality1 + v2*T5_vitality2 + v3*T5_vitality5
+  
+  WlearnT1 =~ l1*T2_learn1 + l2*T2_learn2 + l3*T2_learn3
+  WlearnT2 =~ l1*T3_learn1 + l2*T3_learn2 + l3*T3_learn3
+  WlearnT3 =~ l1*T4_learn1 + l2*T4_learn2 + l3*T4_learn3
+  WlearnT4 =~ l1*T5_learn1 + l2*T5_learn2 + l3*T5_learn3
+  
+  WpaT1 =~ p1*T2_pa1 + p2*T2_pa2 + p3*T2_pa3 + p4*T2_pa4 + p5*T2_pa5
+  WpaT2 =~ p1*T3_pa1 + p2*T3_pa2 + p3*T3_pa3 + p4*T3_pa4 + p5*T3_pa5
+  WpaT3 =~ p1*T4_pa1 + p2*T4_pa2 + p3*T4_pa3 + p4*T4_pa4 + p5*T4_pa5
+  WpaT4 =~ p1*T5_pa1 + p2*T5_pa2 + p3*T5_pa3 + p4*T5_pa4 + p5*T5_pa5
+  
+  WnaT1 =~ n1*T2_na1 + n2*T2_na2 + n3*T2_na3 + n4*T2_na4 + n5*T2_na5
+  WnaT2 =~ n1*T3_na1 + n2*T3_na2 + n3*T3_na3 + n4*T3_na4 + n5*T3_na5
+  WnaT3 =~ n1*T4_na1 + n2*T4_na2 + n3*T4_na3 + n4*T4_na4 + n5*T4_na5
+  WnaT4 =~ n1*T5_na1 + n2*T5_na2 + n3*T5_na3 + n4*T5_na4 + n5*T5_na5
+  
+  WdemandsT1 =~ d1*T2_demands1 + d2*T2_demands2 + d3*T2_demands3 
+  WdemandsT2 =~ d1*T3_demands1 + d2*T3_demands2 + d3*T3_demands3 
+  WdemandsT3 =~ d1*T4_demands1 + d2*T4_demands2 + d3*T4_demands3 
+  WdemandsT4 =~ d1*T5_demands1 + d2*T5_demands2 + d3*T5_demands3 
+  
+  WautT1 =~ a1*T2_aut1 + a2*T2_aut2 + a3*T2_aut3 
+  WautT2 =~ a1*T3_aut1 + a2*T3_aut2 + a3*T3_aut3 
+  WautT3 =~ a1*T4_aut1 + a2*T4_aut2 + a3*T4_aut3 
+  WautT4 =~ a1*T5_aut1 + a2*T5_aut2 + a3*T5_aut3 
+  
+  WcsupT1 =~ c1*T2_csup1 + c2*T2_csup2 + c3*T2_csup3 + c4*T2_csup4 
+  WcsupT2 =~ c1*T3_csup1 + c2*T3_csup2 + c3*T3_csup3 + c4*T3_csup4 
+  WcsupT3 =~ c1*T4_csup1 + c2*T4_csup2 + c3*T4_csup3 + c4*T4_csup4 
+  WcsupT4 =~ c1*T5_csup1 + c2*T5_csup2 + c3*T5_csup3 + c4*T5_csup4
+  
+  WssupT1 =~ s1*T2_ssup1 + s2*T2_ssup2 + s3*T2_ssup3 + s4*T2_ssup4 
+  WssupT2 =~ s1*T3_ssup1 + s2*T3_ssup2 + s3*T3_ssup3 + s4*T3_ssup4
+  WssupT3 =~ s1*T4_ssup1 + s2*T4_ssup2 + s3*T4_ssup3 + s4*T4_ssup4 
+  WssupT4 =~ s1*T5_ssup1 + s2*T5_ssup2 + s3*T5_ssup3 + s4*T5_ssup4 
+  
+
+  # constrain intercepts
+  T2_vitality1 + T3_vitality1 + T4_vitality1 + T5_vitality1 ~ v1i*1
+  T2_vitality2 + T3_vitality2 + T4_vitality2 + T5_vitality2 ~ v2i*1
+  T2_vitality5 + T3_vitality5 + T4_vitality5 + T5_vitality5 ~ v3i*1
+  
+  T2_learn1 + T3_learn1 + T4_learn1 + T5_learn1 ~ l1i*1
+  T2_learn2 + T3_learn2 + T4_learn2 + T5_learn2 ~ l2i*1
+  T2_learn3 + T3_learn3 + T4_learn3 + T5_learn3 ~ l3i*1
+  
+  T2_pa1 + T3_pa1 + T4_pa1 + T5_pa1 ~ p1i*1
+  T2_pa2 + T3_pa2 + T4_pa2 + T5_pa2 ~ p2i*1
+  T2_pa3 + T3_pa3 + T4_pa3 + T5_pa3 ~ p3i*1
+  T2_pa4 + T3_pa4 + T4_pa4 + T5_pa4 ~ p4i*1
+  T2_pa5 + T3_pa5 + T4_pa5 + T5_pa5 ~ p5i*1
+  
+  T2_na1 + T3_na1 + T4_na1 + T5_na1 ~ n1i*1
+  T2_na2 + T3_na2 + T4_na2 + T5_na2 ~ n2i*1
+  T2_na3 + T3_na3 + T4_na3 + T5_na3 ~ n3i*1
+  T2_na4 + T3_na4 + T4_na4 + T5_na4 ~ n4i*1
+  T2_na5 + T3_na5 + T4_na5 + T5_na5 ~ n5i*1
+  
+  T2_demands1 + T3_demands1 + T4_demands1 + T5_demands1 ~ d1i*1
+  T2_demands2 + T3_demands2 + T4_demands2 + T5_demands2 ~ d2i*1
+  T2_demands3 + T3_demands3 + T4_demands3 + T5_demands3 ~ d3i*1
+  
+  T2_aut1 + T3_aut1 + T4_aut1 + T5_aut1 ~ a1i*1
+  T2_aut2 + T3_aut2 + T4_aut2 + T5_aut2 ~ a2i*1
+  T2_aut3 + T3_aut3 + T4_aut3 + T5_aut3 ~ a3i*1
+  
+  T2_csup1 + T3_csup1 + T4_csup1 + T5_csup1 ~ c1i*1
+  T2_csup2 + T3_csup2 + T4_csup2 + T5_csup2 ~ c2i*1
+  T2_csup3 + T3_csup3 + T4_csup3 + T5_csup3 ~ c3i*1
+  
+  T2_ssup1 + T3_ssup1 + T4_ssup1 + T5_ssup1 ~ s1i*1
+  T2_ssup2 + T3_ssup2 + T4_ssup2 + T5_ssup2 ~ s2i*1
+  T2_ssup3 + T3_ssup3 + T4_ssup3 + T5_ssup3 ~ s3i*1
+
+  # Factor models for health
+  WphysT1 =~ p*T2_sf12pcs
+  WphysT2 =~ p*T3_sf12pcs
+  WphysT3 =~ p*T4_sf12pcs
+  WphysT4 =~ p*T5_sf12pcs
+  
+  WmentT1 =~ m*T2_sf12mcs
+  WmentT2 =~ m*T3_sf12mcs
+  WmentT3 =~ m*T4_sf12mcs
+  WmentT4 =~ m*T5_sf12mcs
+  
+  T2_sf12pcs + T3_sf12pcs + T4_sf12pcs + T5_sf12pcs ~ pi*1
+  T2_sf12mcs + T3_sf12mcs + T4_sf12mcs + T5_sf12mcs ~ mi*1
+  
+  T2_sf12pcs ~~ 0*T2_sf12pcs
+  T3_sf12pcs ~~ 0*T3_sf12pcs
+  T4_sf12pcs ~~ 0*T4_sf12pcs
+  T5_sf12pcs ~~ 0*T5_sf12pcs
+  
+  T2_sf12mcs ~~ 0*T2_sf12mcs
+  T3_sf12mcs ~~ 0*T3_sf12mcs
+  T4_sf12mcs ~~ 0*T4_sf12mcs
+  T5_sf12mcs ~~ 0*T5_sf12mcs
+  
+  # Free latent means from second observation onwards 
+  WvitalityT2 + WvitalityT3 + WvitalityT4 + WlearnT2 + WlearnT3 + WlearnT4 + WpaT2 + WpaT3 + WpaT4 + WnaT2 + WnaT3 + WnaT4 + WdemandsT2 + WdemandsT3 + WdemandsT4 + WautT2 + WautT3 + WautT4 + WcsupT2 + WcsupT3 + WcsupT4 + WssupT2 + WssupT3 + WssupT4 ~ 1
+  
+  
+  #########################
+  # WITHIN PART: DYNAMICS #
+  #########################
+  
+  # Specify the lagged effects between the within-person centered latent variables.
+  # Auto effects 
+  
+  WphysT2  ~ WphysT1 
+  WphysT3  ~ WphysT2 
+  WphysT4  ~ WphysT3 
+  
+  WmentT2  ~ WmentT1 
+  WmentT3  ~ WmentT2 
+  WmentT4  ~ WmentT3 
+  
+  WvitalityT2  ~ WvitalityT1 
+  WvitalityT3  ~ WvitalityT2 
+  WvitalityT4  ~ WvitalityT3 
+  
+  WlearnT2  ~ WlearnT1 
+  WlearnT3  ~ WlearnT2 
+  WlearnT4  ~ WlearnT3 
+  
+  WpaT2  ~ WpaT1 
+  WpaT3  ~ WpaT2 
+  WpaT4  ~ WpaT3 
+  
+  WnaT2  ~ WnaT1 
+  WnaT3  ~ WnaT2 
+  WnaT4  ~ WnaT3 
+  
+  WdemandsT2  ~ WdemandsT1 
+  WdemandsT3  ~ WdemandsT2 
+  WdemandsT4  ~ WdemandsT3 
+  
+  WautT2  ~ WautT1 
+  WautT3  ~ WautT2 
+  WautT4  ~ WautT3 
+  
+  WcsupT2  ~ WcsupT1 
+  WcsupT3  ~ WcsupT2 
+  WcsupT4  ~ WcsupT3 
+  
+  WssupT2  ~ WssupT1 
+  WssupT3  ~ WssupT2 
+  WssupT4  ~ WssupT3 
+  
+  
+  # Regressions
+  WphysT2 ~ pv*WvitalityT1 + pl*WlearnT1 + WpaT1 + WnaT1 + WdemandsT1 + WautT1 + WcsupT1 + WssupT1 
+  WphysT3 ~ pv*WvitalityT2 + pl*WlearnT2 + WpaT2 + WnaT2 + WdemandsT2 + WautT2 + WcsupT2 + WssupT2 
+  WphysT4 ~ pv*WvitalityT3 + pl*WlearnT3 + WpaT3 + WnaT3 + WdemandsT3 + WautT3 + WcsupT3 + WssupT3 
+  
+  WmentT2 ~ mv*WvitalityT1 + ml*WlearnT1 + WpaT1 + WnaT1 + WdemandsT1 + WautT1 + WcsupT1 + WssupT1 
+  WmentT3 ~ mv*WvitalityT2 + ml*WlearnT2 + WpaT2 + WnaT2 + WdemandsT2 + WautT2 + WcsupT2 + WssupT2 
+  WmentT4 ~ mv*WvitalityT3 + ml*WlearnT3 + WpaT3 + WnaT3 + WdemandsT3 + WautT3 + WcsupT3 + WssupT3 
+  
+  WvitalityT2 ~ vp*WphysT1 + vm*WmentT1
+  WvitalityT3 ~ vp*WphysT1 + vm*WmentT1
+  WvitalityT4 ~ vp*WphysT1 + vm*WmentT1
+  
+  WlearnT2 ~ lp*WphysT1 + lm*WmentT1
+  WlearnT3 ~ lp*WphysT2 + lm*WmentT2
+  WlearnT4 ~ lp*WphysT3 + lm*WmentT3
+    
+  
+  # Estimate the correlations Wthin the same wave.
+  WphysT1 + WmentT1 + WvitalityT1 ~~ WlearnT1
+  WphysT1 + WmentT1 ~~ WvitalityT1
+  WphysT1 ~~ WmentT1
+  
+  WphysT2 + WmentT2 + WvitalityT2 ~~ WlearnT2
+  WphysT2 + WmentT2 ~~ WvitalityT2
+  WphysT2 ~~ WmentT2
+  
+  WphysT3 + WmentT3 + WvitalityT3 ~~ WlearnT3
+  WphysT3 + WmentT3 ~~ WvitalityT3
+  WphysT3 ~~ WmentT3
+  
+  WphysT4 + WmentT4 + WvitalityT4 ~~ WlearnT4
+  WphysT4 + WmentT4 ~~ WvitalityT4
+  WphysT4 ~~ WmentT4
+
+  
+  ##########################
+  # ADDITIONAL CONSTRAINTS #
+  ##########################
+  
+  # Constrain covariance of the between factors and exogenous within factors to 0. 
+  RIvitality1 + RIvitality2 + RIvitality3 + RIlearn1 + RIlearn2 + RIlearn3 + RIpa1 + RIpa2 + RIpa3 + RIpa4 + RIpa5 + RIna1 + RIna2 + RIna3 + RIna4 + RIna5 + RIdemands1 + RIdemands2 + RIdemands3 + RIaut1 + RIaut2 + RIaut3 + RIcsup1 + RIcsup2 + RIcsup3 + RIcsup4 + RIssup1 + RIssup2 + RIssup3 + RIssup4 + RIphys + RIment ~~ 0*WvitalityT1 + 0*WlearnT1 + 0*WpaT1 + 0*WnaT1 + 0*WdemandsT1 + 0*WautT1 + 0*WcsupT1 + 0*WssupT1 + 0*WphysT1 + 0*WmentT1 
+'
+RICLPM1.ext3.fit <- cfa(RICLPM1.ext3, data = dataset, missing = 'ML')
+summary(RICLPM1.ext3.fit, standardized = T,  fit.measures=TRUE)
+
+```
+
