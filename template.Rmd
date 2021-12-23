@@ -14,7 +14,7 @@ output:
 Code version: `r system("git log -1 --format=oneline | cut -d' ' -f1", intern = TRUE)`
 
 ```{r knitr, include = FALSE}
-knitr::opts_chunk$set(include = F, echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(include = T, echo=FALSE, warning=FALSE, message=FALSE)
 
 DOCNAME = "Integrate Thriving"
 knitr::opts_chunk$set(autodep        = TRUE,
@@ -33,20 +33,22 @@ knitr::opts_chunk$set(autodep        = TRUE,
 
 ```{r libaries, cache = FALSE, include = FALSE}
 
-source("./R/remote_functions.R")
-
 packages <- c("mediation", "foreign", "tidyverse","stargazer","multicon", "ggplot2", "plyr", "reshape2", "readxl", "haven", "sjlabelled", "janitor",
               "scales", "grid", "tidyLPA", "Rcpp", "naniar", "dplyr", "car", "mice", "lubridate", "zoo", "purrr", "rlang", "mgsub", "datapasta", "stringr",
-              "rstudioapi", "labelled", "modi", "semPlot", "kulife", "knitr", "janitor", "DT", "sjlabelled", "kableExtra", "semoutput",
+              "rstudioapi", "labelled", "modi", "semPlot", "kulife", "knitr", "janitor", "DT", "sjlabelled", "kableExtra", 
               "glue", "numform", "xtable", "officer", "Hmisc",
               "lme4", "lmerTest", "RSA", "gridExtra", "MuMIn", "misty", "performance",
-              "sjlabelled", "kableExtra", "flextable", "sjPlot")
+              "sjlabelled", "kableExtra", "flextable", "sjPlot", "reprex", "datapasta", "semoutput", "semTools",
+              "merTools", "xlsx")
+
+source("./R/remote_functions.R")
+source("./R/MultilevelRSA.r")
 
 ipak(packages)
 
 ```
 
-```{r get_data, cache = FALSE}
+```{r get_data, cache = FALSE, include = FALSE}
 options(knitr.table.format = function() {
   if (knitr::is_latex_output()) 'latex' else 'pandoc'
 })
@@ -61,20 +63,22 @@ names(df_list) <- files
 df_list <- read_in(files)
 
 list2env(df_list,envir=.GlobalEnv)
+
 ```
 
 
-```{r session-info, cache = FALSE}
+
+```{r session-info, cache = FALSE, include = FALSE}
 devtools::session_info()
 ```
 
-```{r cleanup-docs, cache = FALSE}
+```{r cleanup-docs, cache = FALSE, include = FALSE}
 doc.files <- c(list.files(pattern = "pdf"),
                list.files(pattern = "html"),
                list.files(pattern = "docx"))
 
 for (file in doc.files) {
-    file.rename(file, file.path("../docs", file))
+    file.rename(file, file.path("./docs", file))
 }
 ```
 

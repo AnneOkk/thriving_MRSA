@@ -1,11 +1,16 @@
-unnamed-chunk-2	cols	dataset	dataset1	dataset3
+unnamed-chunk-2	cols	dataset	dataset1	dataset3	V
 unnamed-chunk-3	alph	alph_dat_sel	alph_df	alph_split	comp	comp_dat_sel	comp_df	comp_split	dataset	demo_dat
 unnamed-chunk-4	cor_tab	corstar	corstar_select	doc	flat_cor	flattenCorrMatrix	html_table	Mean	mean_sd	res2	SD	tf
 unnamed-chunk-5	cor_tab	corstar	corstar_select	doc	flat_cor	flattenCorrMatrix	html_table	Mean	mean_sd	res2	SD	tf
 unnamed-chunk-6	
-unnamed-chunk-7	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
+unnamed-chunk-7	fit	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
 unnamed-chunk-8	dataset	fit	longer	model
 unnamed-chunk-9	
 unnamed-chunk-10	aggregate_df	cwc_df	dat	dataframe	gmc_df	is.nan.data.frame	longer_comp	m0_ment	m0_phys
-unnamed-chunk-11	fit1	model
-unnamed-chunk-12	mphys_randomthriv	mphys_randomX_Y	std_coef_phys_XY	stdCoef.merMod
+unnamed-chunk-11	
+unnamed-chunk-12	mphys_randomthriv	mphys_randomX_Y	std_coef_phys_XY
+unnamed-chunk-13	mphys_randomX_Y	std_coef_phys_XY
+unnamed-chunk-14	mment_randomthriv	mment_randomX_Y	std_coef_phys_XY
+unnamed-chunk-15	mment_randomX_Y	std_coef_phys_XY
+unnamed-chunk-16	dataset
+unnamed-chunk-17	

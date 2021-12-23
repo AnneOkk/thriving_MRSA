@@ -199,3 +199,13 @@ compute_icc <- function(lmer_object){
   return(icc)
 }
 
+# Create standardized coefficients
+stdCoef.merMod <- function(object) {
+  sdy <- sd(getME(object,"y"))
+  sdx <- apply(getME(object,"X"), 2, sd)
+  sc <- round(fixef(object)*sdx/sdy, 2)
+  se.fixef <- coef(summary(object))[,"Std. Error"]
+  se <- se.fixef*sdx/sdy
+  return(data.frame(stdcoef=sc))
+}
+
