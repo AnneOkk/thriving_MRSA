@@ -107,6 +107,17 @@ mean_sd <- as.data.frame(rbind(Mean, SD)) %>% t()
 
 corstar_select <- cbind(mean_sd, corstar)
 
+# qrite corstar select for online appendix
+corstar_select_onlineapp <- corstar_select
+names(corstar_select_onlineapp) <- gsub("_", " ", names(corstar_select_onlineapp) )
+rownames(corstar_select_onlineapp) <- gsub("_", " ", rownames(corstar_select_onlineapp) )
+
+write.xlsx(corstar_select_onlineapp,"../output/corstar_select.xlsx", col.names = TRUE,
+  row.names = TRUE)
+
+
+
+
 res2 <- rcorr(as.matrix(cor_tab))
 
 cat("Range of available data:",range(res2$n))
@@ -139,6 +150,8 @@ rownames(corstar_select) <- sub("T1te","Ten.", rownames(corstar_select))
 rownames(corstar_select) <- sub("pc","PH", rownames(corstar_select))  
 rownames(corstar_select) <- sub("mc","MH", rownames(corstar_select))  
 
+
+
 tf <- paste0(getwd(),"/try.docx")
  
 html_table <- flextable(corstar_select %>% rownames_to_column("Var.")) %>%
@@ -166,15 +179,23 @@ flat_cor <-flattenCorrMatrix(res2$r, res2$P)
 flat_cor$p <- round(flat_cor$p, 3)
 flat_cor[order(flat_cor$p),] 
 flat_cor %>% .[grep("sf12", .$column), ] %>% .[.$p <= 0.05, ]
+
+
+
+
 ```
 
 # Correlation table model variables
 
 ```{r}
 #### Model variables and demos
-cor_tab <- comp_df %>% dplyr::select(matches("_age|_sex|edu$|tenure_org|thriv|vita|learn|sf12pcs|sf12mcs")) 
+cor_tab <- comp_df %>%select(ends_with("vitality"), ends_with("learn"), ends_with("thriv"),
+                             T1_age:T1_edu, T1_tenure_org, 
+                             ends_with("12pcs"),  ends_with("12mcs"))
 
-corstar <- data.frame(corstars(cor_tab, removeTriangle = "upper", result="none"))
+names(cor_tab)
+
+corstar <- data.frame(corstars_no_stars(cor_tab, removeTriangle = "upper", result="none"))
 
 Mean <- round(colMeans(cor_tab, na.rm =T),2)
 SD <- round(apply(cor_tab, 2, sd, na.rm = T),2)
@@ -192,6 +213,12 @@ names(corstar_select) <- substr(names(corstar_select), start = 1, stop = 5)
 names(corstar_select) <- c("M", "SD", "1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "9.", "10.", "11.", "12.", "13.", "14.",
                            "15.", "16.", "17.", "18.", "19.", "20.", "21.", "22.", "23.")
 
+names_removezero <- names(corstar_select[, 3:length(corstar_select)])
+
+corstar_select <- corstar_select %>%
+    mutate_at(vars(all_of(names_removezero)), ~ str_replace(., "0.", "."))
+
+                        
 rownames(corstar_select) <- substr(rownames(corstar_select), start = 1, stop = 5)
 rownames(corstar_select) <- sub("_","", rownames(corstar_select))  
 rownames(corstar_select) <- sub("T2","T1", rownames(corstar_select))  
@@ -219,7 +246,7 @@ corstar_select
 doc <- read_docx() %>%
    body_add_flextable(value = html_table, split = TRUE) %>%
    body_end_section_landscape() %>% # a landscape section is ending here
-   print( target = "my_table_short.docx" )
+   print( target = "../output/my_table_short.docx" )
 
 res2 <- rcorr(as.matrix(cor_tab))
 range(res2$n)
@@ -461,7 +488,119 @@ summary(fit, fit.measures=TRUE)
 
 ```
 
-# Multilevel invariance
+# Measurement invariance
+
+```{r}
+library(semTools)
+names(dataset)
+model_configural <- '
+Vita_T1     =~ T2_vitality1 + T2_vitality2 + T2_vitality5
+Vita_T2     =~ T3_vitality1 + T3_vitality2 + T3_vitality5
+Vita_T3     =~ T4_vitality1 + T4_vitality2 + T4_vitality5
+Vita_T4     =~ T5_vitality1 + T5_vitality2 + T5_vitality5
+
+
+Learn_T1    =~ T2_learn1 + T2_learn2 + T2_learn3 
+Learn_T2    =~ T3_learn1 + T3_learn2 + T3_learn3 
+Learn_T3    =~ T4_learn1 + T4_learn2 + T4_learn3 
+Learn_T4    =~ T5_learn1 + T5_learn2 + T5_learn3 
+
+'
+
+
+longFacNames <- list(
+  VITA =     c("Vita_T1","Vita_T2","Vita_T3", "Vita_T4"),
+  LEARN =    c("Learn_T1","Learn_T2","Learn_T3", "Learn_T4"))
+
+
+syntax.config <- measEq.syntax(configural.model = model_configural,
+                               data = dataset,
+                               ID.fac = "std.lv",
+                               longFacNames = longFacNames,
+                               auto="all")
+
+mod.config <- as.character(syntax.config)   # save as text
+
+fit.config <- cfa(mod.config, 
+                  data = dataset, 
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+library(kableExtra)
+reliability(fit.config) %>%
+  kable(digits = 3) %>%
+  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
+
+
+syntax.metric <- measEq.syntax(configural.model = model_configural, 
+                               data = dataset,
+                               ID.fac = "std.lv", 
+                               longFacNames = longFacNames,
+                               group.equal = c("loadings"),
+                               long.equal  = c("loadings"),
+                               auto="all")
+
+mod.metric <- as.character(syntax.metric)   # save as text
+
+## fit model to data
+fit.metric <- cfa(mod.metric, 
+                  data = dataset,
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+
+syntax.strong <- measEq.syntax(configural.model = model_configural, 
+                               data = dataset,
+                               parameterization = "theta",
+                               ID.fac = "std.lv", 
+                               longFacNames = longFacNames,
+                               group.equal = c("loadings", "intercepts"),
+                               long.equal  = c("loadings", "intercepts"),
+                               auto="all")
+
+mod.strong<- as.character(syntax.strong)    # save as text
+
+## fit model to data
+fit.strong<- cfa(mod.strong, 
+                  data = dataset,
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+
+syntax.strict <- measEq.syntax(configural.model = model_configural, 
+                               data = dataset,
+                               ID.fac = "std.lv", 
+                               longFacNames = longFacNames,
+                               group.equal = c("loadings", "intercepts", "means"),
+                               long.equal  = c("loadings", "intercepts", "means"),
+                               auto="all")
+
+mod.strict<- as.character(syntax.strict)   # save as text
+
+## fit model to data
+fit.strict<- cfa(mod.strict, 
+                  data = dataset, 
+                  parameterization = "theta", 
+                  estimator="ML",
+                  missing="ML")
+
+
+compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@nested %>%
+  kable(digits = 3) %>%
+  kable_classic(full_width=FALSE, html_font = "CMU Serif")
+
+
+compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>%
+  dplyr::select(matches("chisq|df|pvalue|cfi|tli|rmsea|srmr")) %>%
+  kable(digits = 3) %>%
+  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
+
+
+```
+
 
 ```{r eval = F}
 ## Configural invariance (same model configuration across levels)
@@ -800,11 +939,13 @@ cat("R square marginal =" ,r.squaredGLMM(mphys_randomthriv)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mphys_randomthriv)[1,2])
 r.squaredGLMM(mphys_randomthriv)
 check_collinearity(mphys_randomthriv, sort = T)
+
 ```
 
 ### Physical health by vitality and learning with interaction and polynomial
 
 ```{r}
+
 mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
@@ -825,11 +966,45 @@ check_collinearity(mphys_randomX_Y, sort = T)
 
 # PLOT THE ESTIMATED MODEL
 # pdf(file = "Physheal.pdf")
+quantile(longer_comp$x.c, probs = c(0.05, 0.95))
+quantile(longer_comp$y.c, probs = c(0.05, 0.95))
+
+quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))
+
 MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),
-                          outcome="sf12pcs",data=longer_comp,
-                          xlab="Vitality",ylab="Learning",zlab="Physical Health")
-# 
-# dev.off()
+                         outcome="sf12pcs",data=longer_comp, type = "interactive",
+                         axesStyles=list(LOC = list(lty="solid", lwd=2, col= "black")),
+                         xlab="Vitality",ylab="Learning",zlab="Physical Health", bw = T,
+                         panel.aspect = c(1,1))
+
+name_vars=c("x.c","y.c","x2.c","xy.c","y2.c")
+
+b0 <- fixef(mphys_randomX_Y)["(Intercept)"]
+b1 <- fixef(mphys_randomX_Y)[name_vars[1]]
+b2 <- fixef(mphys_randomX_Y)[name_vars[2]]
+b3 <- fixef(mphys_randomX_Y)[name_vars[3]]
+b4 <- fixef(mphys_randomX_Y)[name_vars[4]]
+b5 <- fixef(mphys_randomX_Y)[name_vars[5]]
+
+plotting_df <- longer_comp %>% select(x.c, y.c, sf12pcs)
+loquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[1]
+upquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[2]
+
+plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
+plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
+
+pdf(file = "../figures/physhealplot.pdf")
+
+plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
+                type = "3d", surface = NULL,
+                points = 
+                  list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
+                       color = "black", cex = 0.07, out.mark = FALSE),
+                xlab = "Vitality", ylab = "Learning", zlab = "Physical Health",
+                pad = c(1,2,-3), bw = T
+                )
+ plot
+dev.off()
 ```
 
 ### Mental health by vitality and learning, and thriving, without interaction and polynomial
@@ -896,6 +1071,35 @@ MLRSA_AverageSurfacePlot(mment_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","
                           xlab="Vitality",ylab="Learning",zlab="Physical Health")
 # 
 # dev.off()
+
+
+b0 <- fixef(mment_randomX_Y)["(Intercept)"]
+b1 <- fixef(mment_randomX_Y)[name_vars[1]]
+b2 <- fixef(mment_randomX_Y)[name_vars[2]]
+b3 <- fixef(mment_randomX_Y)[name_vars[3]]
+b4 <- fixef(mment_randomX_Y)[name_vars[4]]
+b5 <- fixef(mment_randomX_Y)[name_vars[5]]
+
+plotting_df <- longer_comp %>% select(x.c, y.c, sf12mcs)
+loquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[1]
+upquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[2]
+
+plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
+plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
+
+pdf(file = "../figures/menthealplot.pdf")
+
+plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
+                type = "3d", surface = NULL,
+                points = 
+                  list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
+                       color = "black", cex = 0.07, out.mark = FALSE),
+                xlab = "Vitality", ylab = "Learning", zlab = "Mental Health",
+                pad = c(1,2,-3), bw = T
+                )
+ plot
+dev.off()
+
 ```
 
 

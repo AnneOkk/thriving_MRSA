@@ -1,0 +1,22 @@
+unnamed-chunk-2	Online_appendix	Thriving_analyses
+unnamed-chunk-5	cols	dataset	dataset1	dataset3	V
+unnamed-chunk-6	alph	alph_dat_sel	alph_df	alph_split	comp	comp_dat_sel	comp_df	comp_split	dataset	demo_dat
+unnamed-chunk-7	cor_tab	corstar	corstar_select	corstar_select_onlineapp	doc	flat_cor	flattenCorrMatrix	html_table	Mean	mean_sd	res2	SD	tf
+unnamed-chunk-8	cor_tab	corstar	corstar_select	doc	flat_cor	flattenCorrMatrix	html_table	Mean	mean_sd	names_removezero	res2	SD	tf
+unnamed-chunk-9	
+unnamed-chunk-10	fit	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
+unnamed-chunk-11	dataset	fit	longer	model
+unnamed-chunk-12	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
+unnamed-chunk-13	
+unnamed-chunk-14	aggregate_df	cwc_df	dat	dataframe	gmc_df	is.nan.data.frame	longer_comp	m0_ment	m0_phys
+unnamed-chunk-15	
+unnamed-chunk-16	mphys_randomthriv	mphys_randomX_Y	std_coef_phys_XY
+unnamed-chunk-17	b0	b1	b2	b3	b4	b5	loquant	mphys_randomX_Y	name_vars	plot	plotting_df	std_coef_phys_XY	upquant
+unnamed-chunk-18	mment_randomthriv	mment_randomX_Y	std_coef_phys_XY
+unnamed-chunk-19	b0	b1	b2	b3	b4	b5	loquant	mment_randomX_Y	plot	plotting_df	std_coef_phys_XY	upquant
+unnamed-chunk-20	dataset
+unnamed-chunk-21	
+setup	
+unnamed-chunk-22	corstar_select	.cache/Integrate/unnamed-chunk-22_db279c636ba3cc480eac896dc99835f0_meta
+unnamed-chunk-23	b0	b1	b2	b3	b4	b5	longer_comp	loquant	mphys_randomX_Y	name_vars	plot	plotting_df	upquant	.cache/Integrate/unnamed-chunk-23_09c21b68d047ad5649446d7adb817038_meta
+unnamed-chunk-24	b0	b1	b2	b3	b4	b5	longer_comp	loquant	mment_randomX_Y	name_vars	plot	plotting_df	upquant	.cache/Integrate/unnamed-chunk-24_3690d07f2b6f72510780dc9c54eb8e24_meta

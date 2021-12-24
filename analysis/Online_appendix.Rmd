@@ -1,0 +1,147 @@
+---
+title: "Online Appendix"
+author: "Anne"
+date: "12/23/2021"
+output: html_document
+
+---
+
+<style type="text/css">
+  body{
+  font-size: 14pt;
+}
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(rgl.useNULL = TRUE) # Suppress the separate window.
+library(rgl)
+```
+
+# Multilevel Polynomial Regression Analysis 
+
+Multilevel polynomial regression analysis (MPRA; see @Nestler2019) is an adaptation of polynomial regression analysis (PRA; see @Edwards.1993a) that can be used when data have a multilevel structure (e.g., observations across multiple time points nested within participants). In the current study, MPRA allows testing and interpreting both the linear effects of vitality and learning separately, as well as the effects of congruent vitality and learning scores using data collected at four time points with a one-month time lag between the assessments. In the following, we use the index m to denote the Level 2 unit ($m = 1…N$) and the index $i$ to denote the Level 1 unit ($i = 1, 2, …, n_{m}$). To assess the existence of congruence effects, the following parameters are estimated at the population level: the slope of the line of congruence (LOC) (i.e., vitality = learning) as related to the outcome variable is given by $\alpha_{1m} = b_{1} + b_{2}$.  Here, $b_{1}$ is the unstandardized regression coefficient for the (latent) vitality variable and $b_2$ is the regression coefﬁcient for the (latent) learning variable. The curvature along the line of perfect agreement is specified by $\alpha_{1m} = b_{3} + b_{4} + b_{5}$. Here, $b_{3}$ is the regression coefﬁcient for (latent) vitality squared, b4 is the regression coefﬁcient for the cross-product of the (latent) vitality and the (latent) learning variable, and b5 is the unstandardized regression coefﬁcient for latent learning squared. The slope of the line of incongruence (LOIC) is defined as $\alpha_{3m} = b_{1} - b_{2}$. The curvature of the line of incongruent vitality and learning levels as related to the outcome variable is specified as $\alpha_{4m} = b_{3} - b_{4} + b_{5}$. Each of the regression coefficients $b_{1}$ to $b_{5}$ includes a fixed effect and Level 2 residual terms. The fixed effects of the regression coefficients are used to estimate the average response surface parameters $\hat{\alpha}_{1}$ to $\hat{\alpha}_{5}$ [@Nestler2019]. 
+
+## References
+
+<div id="refs"></div>
+
+# A full correlation table containing all model and control variables
+
+```{r echo = FALSE}
+corstar_select <- read_excel("../output/corstar_select.xlsx")
+corstar_select$Mean <- sprintf("%.2f", corstar_select$Mean)
+corstar_select$SD <- sprintf("%.2f", corstar_select$SD)
+
+colnames(corstar_select) <- mgsub(colnames(corstar_select), 
+                                  c("age", "sex", "edu", "tenure org", "aut", "csup", "ssup", "na", "pa", "sf12mcs", 
+                                    "sf12pcs", "demands", "learn", "vitality", "thriv"),
+                                  c("Age", "Gender", "Education", "Org. tenure", "Autonomy", "Cowork. support",
+                                    "Superv. support","Negative affect", "Positive affect", "Mental health", 
+                                    "Physical health", "Demands", "Learning", "Vitality", "Thriving"))
+corstar_select <- corstar_select %>% remove_rownames %>% column_to_rownames(var="...1")
+rownames(corstar_select) <- mgsub(rownames(corstar_select), 
+                                  c("age", "sex", "edu", "tenure org", "aut", "csup", "ssup", "na", "pa", "sf12mcs", 
+                                    "sf12pcs", "demands", "learn", "vitality", "thriv"),
+                                  c("Age", "Gender", "Education", "Org. tenure", "Autonomy", "Cowork. support",
+                                    "Superv. support","Negative affect", "Positive affect", "Mental health", 
+                                    "Physical health", "Demands", "Learning", "Vitality", "Thriving"))
+                                  
+
+corstar_select %>%
+  DT::datatable(
+    caption = 'Note. N = 681-1,064 (pairwise deletion). T = time. *p < .05, **p < .01, ***p < .001',
+    extensions = 'Buttons', 
+    style = 'bootstrap',
+    options = list(dom = 'Bfrtip', 
+                   autoWidth = F,
+                   buttons = c('excel', "csv"),
+                   pageLength = 35,
+                  lengthMenu = c(25, 50, 75, 94)))
+
+```
+
+# Interactive response surface plots
+
+## Physical health
+
+The limits of the z-axis were restricted to reflect physical health values present among 90 percent of the participants (i.e., using the 0.05 and 0.95 quantiles as axis limits). The values on the x and y axes represent the person-mean centred vitality and learning scores, respectively. The inner polygon denotes the area where 50% of the data points reside and the outer polygon denotes the area where the remaining 50% of the data points reside.  
+
+```{r echo = FALSE}
+longer_comp <- read_excel("../../data/longer_comp.xlsx")
+mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+# PLOT THE ESTIMATED MODEL
+name_vars <- c("x.c","y.c","x2.c","xy.c","y2.c")
+b0 <- fixef(mphys_randomX_Y)["(Intercept)"]
+b1 <- fixef(mphys_randomX_Y)[name_vars[1]]
+b2 <- fixef(mphys_randomX_Y)[name_vars[2]]
+b3 <- fixef(mphys_randomX_Y)[name_vars[3]]
+b4 <- fixef(mphys_randomX_Y)[name_vars[4]]
+b5 <- fixef(mphys_randomX_Y)[name_vars[5]]
+
+plotting_df <- longer_comp %>% select(x.c, y.c, sf12pcs)
+loquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[1]
+upquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[2]
+
+plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
+plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
+
+plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
+                type = "interactive", surface = "smooth",
+                points = 
+                  list(data = plotting_df, show = NA, value = "raw", jitter = 0, 
+                       color = "black", cex = 0.5, out.mark = FALSE),
+                xlab = "Vitality", ylab = "Learning", zlab = "Physical Health",
+                pad = c(1,2,-3)
+               )
+rglwidget()
+```
+
+## Mental health
+
+The limits of the z-axis were restricted to reflect mental health values present among 90 percent of the participants (i.e., using the 0.05 and 0.95 quantiles as axis limits). The values on the x and y axes represent the person-mean centred vitality and learning scores, respectively. The inner polygon denotes the area where 50% of the data points reside and the outer polygon denotes the area where the remaining 50% of the data points reside.  
+
+
+```{r echo = FALSE}
+longer_comp <- read_excel("../../data/longer_comp.xlsx")
+mment_randomX_Y <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+# PLOT THE ESTIMATED MODEL
+name_vars <- c("x.c","y.c","x2.c","xy.c","y2.c")
+b0 <- fixef(mment_randomX_Y)["(Intercept)"]
+b1 <- fixef(mment_randomX_Y)[name_vars[1]]
+b2 <- fixef(mment_randomX_Y)[name_vars[2]]
+b3 <- fixef(mment_randomX_Y)[name_vars[3]]
+b4 <- fixef(mment_randomX_Y)[name_vars[4]]
+b5 <- fixef(mment_randomX_Y)[name_vars[5]]
+
+plotting_df <- longer_comp %>% select(x.c, y.c, sf12mcs)
+loquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[1]
+upquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[2]
+
+plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
+plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
+
+plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
+                type = "interactive", surface = "smooth",
+                points = 
+                  list(data = plotting_df, show = NA, value = "raw", jitter = 0, 
+                       color = "black", cex = 0.5, out.mark = FALSE),
+                xlab = "Vitality", ylab = "Learning", zlab = "Mental Health",
+                pad = c(1,2,-3)
+               )
+rglwidget()
+```
+

@@ -1,7 +1,10 @@
 ---
-title: "Integrate Thriving"
-author: "Anne Kleine"
+title: "Thriving at work - Online Appendix"
+author: "[authors blinded for review]"
 date: '`r Sys.Date()`'
+bibliography: ./refs/refs.bib
+csl: ./refs/apa7.csl
+mainfont: Times New Roman
 output:
   html_document:
     number_sections: yes
@@ -11,12 +14,8 @@ output:
     df_print: paged
 ---
 
-Code version: `r system("git log -1 --format=oneline | cut -d' ' -f1", intern = TRUE)`
-
-```{r knitr, include = FALSE}
-knitr::opts_chunk$set(include = T, echo=FALSE, warning=FALSE, message=FALSE)
-
-DOCNAME = "Integrate Thriving"
+```{r, include = FALSE}
+DOCNAME <- "Integrate"
 knitr::opts_chunk$set(autodep        = TRUE,
                       cache          = TRUE,
                       cache.path     = paste0("cache/", DOCNAME, "/"),
@@ -31,7 +30,7 @@ knitr::opts_chunk$set(autodep        = TRUE,
                       warning        = FALSE)
 ```
 
-```{r libaries, cache = FALSE, include = FALSE}
+```{r libraries, cache = FALSE, include = FALSE}
 
 packages <- c("mediation", "foreign", "tidyverse","stargazer","multicon", "ggplot2", "plyr", "reshape2", "readxl", "haven", "sjlabelled", "janitor",
               "scales", "grid", "tidyLPA", "Rcpp", "naniar", "dplyr", "car", "mice", "lubridate", "zoo", "purrr", "rlang", "mgsub", "datapasta", "stringr",
@@ -53,19 +52,16 @@ options(knitr.table.format = function() {
   if (knitr::is_latex_output()) 'latex' else 'pandoc'
 })
 
-library(rlang)
-library(tidyverse)
-library(foreign)
-files <- dir("./data", pattern = "\\.sav$", full.names = FALSE) 
+files <- dir("../data", pattern = "\\.sav$", full.names = FALSE) 
 df_list <- vector("list", length(files))
 names(df_list) <- files
 
-df_list <- read_in(files)
+df_list <- read_in(files, directory = "../data/")
 
 list2env(df_list,envir=.GlobalEnv)
 
-```
 
+```
 
 
 ```{r session-info, cache = FALSE, include = FALSE}
@@ -82,10 +78,13 @@ for (file in doc.files) {
 }
 ```
 
-```{r, child='./analysis/Thriving_analyses.Rmd'}
+```{r, include=FALSE}
+Thriving_analyses <- TRUE
+Online_appendix <- TRUE
 ```
 
-```{r}
-rmarkdown::render('template.Rmd', output_file = 'output/output.html')
+```{r, child=if (Thriving_analyses) './analysis/Thriving_analyses.Rmd'}
 ```
 
+```{r, child=if (Online_appendix) './analysis/Online_appendix.Rmd'}
+```
