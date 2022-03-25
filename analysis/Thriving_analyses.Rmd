@@ -100,7 +100,7 @@ alph_df
 ```{r}
 cor_tab <- comp_df %>% dplyr::select(matches("_age|_sex|edu$|tenure_org|thriv|vita|learn|pa|_na|aut|demands|csup|ssup|sf12pcs|sf12mcs"))
 
-corstar <- data.frame(corstars(cor_tab, removeTriangle = "upper", result="none"))
+corstar <- data.frame(corstars(cor_tab, removeTriangle = "none", result="none"))
 Mean <- round(colMeans(cor_tab, na.rm =T),2)
 SD <- round(apply(cor_tab, 2, sd, na.rm = T),2)
 mean_sd <- as.data.frame(rbind(Mean, SD)) %>% t()
@@ -114,7 +114,6 @@ rownames(corstar_select_onlineapp) <- gsub("_", " ", rownames(corstar_select_onl
 
 write.xlsx(corstar_select_onlineapp,"../output/corstar_select.xlsx", col.names = TRUE,
   row.names = TRUE)
-
 
 
 
@@ -149,7 +148,6 @@ rownames(corstar_select) <- sub("T1ed","Edu.", rownames(corstar_select))
 rownames(corstar_select) <- sub("T1te","Ten.", rownames(corstar_select))  
 rownames(corstar_select) <- sub("pc","PH", rownames(corstar_select))  
 rownames(corstar_select) <- sub("mc","MH", rownames(corstar_select))  
-
 
 
 tf <- paste0(getwd(),"/try.docx")
@@ -804,7 +802,7 @@ dat$thriv.mean <- (dat$x.mean + dat$y.mean)/2
 
 dat <- dat %>% drop_na(x.c, y.c, thriv, sf12mcs, sf12pcs) %>% dplyr::select(matches("x.c|y.c|xy.c|x2.c|y2.c|thriv.c|.mean|sf12mcs|sf12pcs|vita|learn", ignore.case = F))
 
-longer_comp <- longer_comp %>% drop_na(vitality, learn, sf12mcs, sf12pcs) 
+longer_comp <- longer_comp %>% drop_na(vitality, learn, sf12mcs, sf12pcs) %>% dplyr::select(where(is.numeric))
 
 # create aggregate_df for calculating means 
 aggregate_df <- longer_comp %>%
@@ -843,6 +841,78 @@ cat("ICC mental health:", compute_icc(m0_ment) %>%
   round(3))
 
 ```
+
+## Preparation lagged data frame
+
+```{r}
+dataframe_l <- comp_df
+
+# assign ID variable
+dataframe_l$ID <- seq.int(nrow(dataframe))
+
+names(dataframe_l) <-  reduce2(c('T2_sf', 'T3_sf', 'T4_sf', 'T5_sf'), c('T1_sf', 'T2_sf', 'T3_sf', 'T4_sf'),  .init = names(dataframe_l), str_replace)
+
+dataframe_l <- select(dataframe_l, -matches("T5_|T1_sf"))
+
+# create long format data frame for multilevel analysis
+longer_comp_l <- dataframe_l %>% 
+ pivot_longer(matches("T2|T3|T4"),
+    names_pattern = "(T._)(.*)", 
+   names_to = c( "set", ".value")
+ ) %>% mutate(set = (as.numeric(mgsub(.$set, c("T", "_"), c("", "")))) - 2)
+
+## We use the function to prepare the data; the Level-2 indicator is
+## "ID"
+dat <- ddply(longer_comp_l,.var="ID",.fun=Center)
+is.nan.data.frame <- function(x)
+do.call(cbind, lapply(x, is.nan))
+dat[is.nan(dat)] <- NA
+
+# create thriving centered and thriving mean for use in multilevel RSA
+dat$thriv.c <- (dat$x.c + dat$y.c)/2
+dat$thriv.mean <- (dat$x.mean + dat$y.mean)/2
+
+dat <- dat %>% drop_na(x.c, y.c, thriv, sf12mcs, sf12pcs) %>% dplyr::select(matches("x.c|y.c|xy.c|x2.c|y2.c|thriv.c|.mean|sf12mcs|sf12pcs|vita|learn", ignore.case = F))
+
+longer_comp_l <- longer_comp_l %>% drop_na(vitality, learn, sf12mcs, sf12pcs)  %>% dplyr::select(where(is.numeric))
+
+# create aggregate_df for calculating means 
+aggregate_df <- longer_comp_l %>%
+  group_by(ID) %>%
+  summarise_at(vars(-set), funs(mean(., na.rm=TRUE))) %>% dplyr::select(ID, na, pa, thriv, demands, aut, csup, ssup, sf12pcs, sf12mcs, vitality, learn)
+
+names(aggregate_df) <- paste0(names(aggregate_df), ".mean")
+aggregate_df$ID <- aggregate_df$ID.mean
+colnames(aggregate_df)[4] <- "thriv_mean"
+
+# grand mean center static variables for use in multilevel model
+gmc_df <- longer_comp_l %>% dplyr::select(T1_age, T1_sex, T1_edu, T1_tenure_org)
+gmc_df[] <- lapply(gmc_df, function(x) center(x, type = "CGM", check = T))
+names(gmc_df) <- paste0("GMC_", names(gmc_df))
+
+# group mean center change variables for use in multilevel model
+cwc_df <- longer_comp_l %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, thriv, vitality, learn, set)
+cwc_df <- as.data.frame(lapply(cwc_df[-1], center, type = "CWC", cluster = cwc_df$ID))
+names(cwc_df) <- paste0("CWC_", names(cwc_df))
+cwc_df$set <- cwc_df$CWC_set
+cwc_df$ID <- longer_comp_l$ID
+
+# make one dataframe that contains mean values, and centered variables
+longer_comp_l <- cbind(dat, cwc_df, gmc_df)
+longer_comp_l <- full_join(longer_comp_l, aggregate_df, by = "ID")
+
+# estimating the null model using lme4
+m0_phys <- lmer(sf12pcs ~ 1 + (1|ID), longer_comp_l)
+m0_ment <- lmer(sf12mcs ~ 1 + (1|ID), longer_comp_l)
+
+# calculate ICC for physical and mental health
+cat("ICC physical health:", compute_icc(m0_phys) %>%
+  round(3))
+
+cat("ICC mental health:", compute_icc(m0_ment) %>%
+  round(3))
+```
+
 
 ## Multilevel direct effects 
 
@@ -914,7 +984,7 @@ summary(fit1, fit.measures=TRUE)
 ```{r}
 mphys_randomX_Y <- lmer(sf12pcs ~1 +CWC_vitality+ CWC_learn +
                         vitality.mean + learn.mean +
-                        (1+CWC_vitality + CWC_learn|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+                        (1+CWC_vitality |ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mphys_randomX_Y)
 tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
 
@@ -954,6 +1024,7 @@ mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
                         (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 summary(mphys_randomX_Y)
+
 tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
 
 std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
@@ -996,15 +1067,38 @@ plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
 pdf(file = "../figures/physhealplot.pdf")
 
 plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
-                type = "3d", surface = NULL,
+                type = "3d", surface = NULL, 
                 points = 
                   list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
-                       color = "black", cex = 0.07, out.mark = FALSE),
+                       color = "transparent", cex = 0.07, out.mark = FALSE),
                 xlab = "Vitality", ylab = "Learning", zlab = "Physical Health",
-                pad = c(1,2,-3), bw = T
+                pad = c(1,2,-3), bw = T, xlim = c(-3,3), ylim = c(-3,3) 
                 )
- plot
+plot
 dev.off()
+```
+
+#### Without random slopes
+
+```{r}
+mphys_randomX_Y_noslope<- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+mphys_randomX_Y_noslope_l<- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1|ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mphys_randomX_Y)
+tab_model(mphys_randomX_Y_noslope)
+tab_model(mphys_randomX_Y_noslope_l)
 ```
 
 ### Mental health by vitality and learning, and thriving, without interaction and polynomial
@@ -1031,8 +1125,7 @@ check_collinearity(mment_randomX_Y, sort = T)
 mment_randomthriv <- lmer(sf12mcs~1 +CWC_thriv+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + set +
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        thriv_mean + 
-                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        thriv_mean + pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
                         (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mment_randomthriv)
 
@@ -1072,7 +1165,6 @@ MLRSA_AverageSurfacePlot(mment_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","
 # 
 # dev.off()
 
-
 b0 <- fixef(mment_randomX_Y)["(Intercept)"]
 b1 <- fixef(mment_randomX_Y)[name_vars[1]]
 b2 <- fixef(mment_randomX_Y)[name_vars[2]]
@@ -1093,13 +1185,37 @@ plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
                 type = "3d", surface = NULL,
                 points = 
                   list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
-                       color = "black", cex = 0.07, out.mark = FALSE),
+                       color = "transparent", cex = 0.07, out.mark = FALSE),
                 xlab = "Vitality", ylab = "Learning", zlab = "Mental Health",
-                pad = c(1,2,-3), bw = T
+                pad = c(1,2,-3), bw = T, xlim = c(-3,3), ylim = c(-3,3) 
                 )
+
  plot
 dev.off()
 
+```
+
+#### Without random slopes
+
+```{r}
+mment_randomX_Y_noslope <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+mment_randomX_Y_noslope_l <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
+                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
+                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        (1|ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+tab_model(mment_randomX_Y_noslope, show.ci = FALSE, show.se = TRUE)
+tab_model(mment_randomX_Y_noslope_l, show.ci = FALSE, show.se = TRUE)
+
+tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE)
 ```
 
 
@@ -1134,11 +1250,67 @@ cat("Job tenure distribution: \n")
 summary(dataset$T1_tenure_org)
 sd(dataset$T1_tenure_org, na.rm=T)
 
-
-
 ```
 
-# RI-CLPM
+# Preparation RI-CLPM
+
+```{r}
+# Only center a subset
+vars <- dataset %>% select(-matches("sf12|ID|age|sex|edu|tenure")) %>% names(.)
+
+dataset <- dataset %>% 
+  mutate_at(vars, scale, scale = FALSE)
+
+ind_prod_df <- dataset %>% select(matches("learn|vitality"))
+
+make_prod_terms <- function(dataframe, tp) {
+  indProd(dataframe, 
+          var1 = c(paste0(tp,"_learn1"), paste0(tp,"_learn2"), paste0(tp,"_learn3")) , 
+          var2 = c(paste0(tp,"_vitality1"), paste0(tp,"_vitality2"), paste0(tp,"_vitality5")), 
+          residualC = FALSE, 
+          doubleMC = TRUE, 
+          namesProd = c(paste0(tp,"_vitalearn1"), paste0(tp,"_vitalearn2"), paste0(tp,"_vitalearn3")))
+  }
+
+df_prod <- make_prod_terms(ind_prod_df, "T2") %>% select(matches("vitalearn")) %>%
+  cbind(., make_prod_terms(ind_prod_df, "T3")) %>% select(matches("vitalearn")) %>%
+  cbind(., make_prod_terms(ind_prod_df, "T4")) %>% select(matches("vitalearn")) %>%
+  cbind(., make_prod_terms(ind_prod_df, "T5")) %>% select(matches("vitalearn"))
+  
+make_quad_terms <- function(dataframe, tp) {
+  learnsq <- indProd(dataframe, 
+          var1 = c(paste0(tp,"_learn1"), paste0(tp,"_learn2"), paste0(tp,"_learn3")) , 
+          var2 = c(paste0(tp,"_learn1"), paste0(tp,"_learn2"), paste0(tp,"_learn3")), 
+          residualC = FALSE, 
+          meanC = FALSE,
+          doubleMC = FALSE,
+          namesProd = c(paste0(tp,"_learnsq1"), paste0(tp,"_learnsq2"), paste0(tp,"_learnsq3")))
+  vitasq <- indProd(dataframe, 
+          var1 = c(paste0(tp,"_vitality1"), paste0(tp,"_vitality2"), paste0(tp,"_vitality5")) , 
+          var2 = c(paste0(tp,"_vitality1"), paste0(tp,"_vitality2"), paste0(tp,"_vitality5")), 
+          residualC = FALSE, 
+          meanC = FALSE,
+          doubleMC = FALSE,
+          namesProd = c(paste0(tp,"_vitasq1"), paste0(tp,"_vitasq2"), paste0(tp,"_vitasq3")))
+  cbind(learnsq, vitasq)
+  }
+ 
+df_quad <- make_quad_terms(ind_prod_df, "T2") %>% select(matches("sq")) %>%
+  cbind(., make_quad_terms(ind_prod_df, "T3")) %>% select(matches("sq")) %>%
+  cbind(., make_quad_terms(ind_prod_df, "T4")) %>% select(matches("sq")) %>%
+  cbind(., make_quad_terms(ind_prod_df, "T5")) %>% select(matches("sq"))
+
+dataset <- cbind(dataset, df_prod, df_quad)
+
+dataset
+```
+
+
+
+
+
+
+# RI-CLPM all variables including controls 
 
 ```{r eval = FALSE}
 RICLPM1.ext3 <- '
@@ -1155,6 +1327,18 @@ RICLPM1.ext3 <- '
   RIlearn1 =~ 1*T2_learn1 + 1*T3_learn1 + 1*T4_learn1 + 1*T5_learn1
   RIlearn2 =~ 1*T2_learn2 + 1*T3_learn2 + 1*T4_learn1 + 1*T5_learn2
   RIlearn3 =~ 1*T2_learn3 + 1*T3_learn3 + 1*T4_learn1 + 1*T5_learn3
+  
+  RIvitalearn1 =~ 1*T2_vitalearn1 + 1*T3_vitalearn1 + 1*T4_vitalearn1 + 1*T5_vitalearn1
+  RIvitalearn2 =~ 1*T2_vitalearn2 + 1*T3_vitalearn2 + 1*T4_vitalearn2 + 1*T5_vitalearn2
+  RIvitalearn3 =~ 1*T2_vitalearn3 + 1*T3_vitalearn3 + 1*T4_vitalearn3 + 1*T5_vitalearn3
+
+  RIvitasq1 =~ 1*T2_vitasq1 + 1*T3_vitasq1 + 1*T4_vitasq1 + 1*T5_vitasq1
+  RIvitasq2 =~ 1*T2_vitasq2 + 1*T3_vitasq2 + 1*T4_vitasq2 + 1*T5_vitasq2
+  RIvitasq3 =~ 1*T2_vitasq3 + 1*T3_vitasq3 + 1*T4_vitasq3 + 1*T5_vitasq3
+
+  RIlearnsq1 =~ 1*T2_learnsq1 + 1*T3_learnsq1 + 1*T4_learnsq1 + 1*T5_learnsq1
+  RIlearnsq2 =~ 1*T2_learnsq2 + 1*T3_learnsq2 + 1*T4_learnsq2 + 1*T5_learnsq2
+  RIlearnsq3 =~ 1*T2_learnsq3 + 1*T3_learnsq3 + 1*T4_learnsq3 + 1*T5_learnsq3
   
   RIpa1 =~ 1*T2_pa1 + 1*T3_pa1 + 1*T4_pa1 + 1*T5_pa1
   RIpa2 =~ 1*T2_pa2 + 1*T3_pa2 + 1*T4_pa1 + 1*T5_pa2
@@ -1191,6 +1375,10 @@ RICLPM1.ext3 <- '
   
   RIvitality =~ RIvitality1 + RIvitality2 + RIvitality3
   RIlearn =~ RIlearn1 + RIlearn2 + RIlearn3
+  RIvitalearn =~ RIvitalearn1 + RIvitalearn2 + RIvitalearn3
+  RIvitasq =~ RIvitasq1 + RIvitasq2 + RIvitasq3
+  RIlearnsq =~ RIlearnsq1 + RIlearnsq2 + RIlearnsq3
+  
   RIpa =~ RIpa1 + RIpa2 + RIpa3 + RIpa4 + RIpa5
   RIna =~ RIna1 + RIna2 + RIna3 + RIna4 + RIna5 
   RIdemands =~ RIdemands1 + RIdemands2 + RIdemands3
@@ -1198,17 +1386,21 @@ RICLPM1.ext3 <- '
   RIcsup =~ RIcsup1 + RIcsup2 + RIcsup3 + RIcsup4
   RIssup =~ RIssup1 + RIssup2 + RIssup3 + RIssup4
   
+  RIphys ~~  RIment + RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIment ~~  RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  # no variance for RIphys and RIment because set to 0!
   
-  RIphys ~~ RIment + RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
-  RIment ~~ RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
-  RIvitality ~~ RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
-  RIlearn ~~ RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
-  RIpa ~~ RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup
-  RIna ~~ RIna + RIdemands + RIaut + RIcsup + RIssup
-  RIdemands ~~ RIdemands + RIaut + RIcsup + RIssup
-  RIaut ~~ RIaut + RIcsup + RIssup
-  RIcsup ~~ RIcsup + RIssup
-  RIssup ~~ RIssup
+  RIvitality ~~ RIvitality + RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIlearn ~~ RIlearn + RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIpa ~~ RIpa + RIna + RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIna ~~ RIna + RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIdemands ~~ RIdemands + RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIaut ~~ RIaut + RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIcsup ~~ RIcsup + RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIssup ~~ RIssup + RIvitalearn + RIvitasq + RIlearnsq
+  RIvitalearn ~~ RIvitalearn + RIvitasq + RIlearnsq
+  RIvitasq ~~ RIvitasq + RIlearnsq
+  RIlearnsq ~~ RIlearnsq
   
   RIvitality1 ~~ 0*RIvitality1
   RIvitality2 ~~ 0*RIvitality2
@@ -1217,6 +1409,19 @@ RICLPM1.ext3 <- '
   RIlearn1 ~~ 0*RIlearn1
   RIlearn2 ~~ 0*RIlearn2
   RIlearn3 ~~ 0*RIlearn3  
+  
+  RIvitalearn1 ~~ 0*RIvitalearn1
+  RIvitalearn2 ~~ 0*RIvitalearn2
+  RIvitalearn3 ~~ 0*RIvitalearn3
+  
+  RIvitasq1 ~~ 0*RIvitasq1
+  RIvitasq2 ~~ 0*RIvitasq2
+  RIvitasq3 ~~ 0*RIvitasq3
+
+  RIlearnsq1 ~~ 0*RIlearnsq1
+  RIlearnsq2 ~~ 0*RIlearnsq2
+  RIlearnsq3 ~~ 0*RIlearnsq3
+  
   
   RIpa1 ~~ 0*RIpa1
   RIpa2 ~~ 0*RIpa2
@@ -1267,6 +1472,22 @@ RICLPM1.ext3 <- '
   WlearnT3 =~ l1*T4_learn1 + l2*T4_learn2 + l3*T4_learn3
   WlearnT4 =~ l1*T5_learn1 + l2*T5_learn2 + l3*T5_learn3
   
+  WvitalearnT1 =~ vl1*T2_vitalearn1 + vl2*T2_vitalearn2 + vl3*T2_vitalearn3
+  WvitalearnT2 =~ vl1*T3_vitalearn1 + vl2*T3_vitalearn2 + vl3*T3_vitalearn3
+  WvitalearnT3 =~ vl1*T4_vitalearn1 + vl2*T4_vitalearn2 + vl3*T4_vitalearn3
+  WvitalearnT4 =~ vl1*T5_vitalearn1 + vl2*T5_vitalearn2 + vl3*T5_vitalearn3
+
+  WlearnsqT1 =~ lsq1*T2_learnsq1 + lsq2*T2_learnsq2 + lsq3*T2_learnsq3
+  WlearnsqT2 =~ lsq1*T3_learnsq1 + lsq2*T3_learnsq2 + lsq3*T3_learnsq3
+  WlearnsqT3 =~ lsq1*T4_learnsq1 + lsq2*T4_learnsq2 + lsq3*T4_learnsq3
+  WlearnsqT4 =~ lsq1*T5_learnsq1 + lsq2*T5_learnsq2 + lsq3*T5_learnsq3
+  
+  WvitasqT1 =~ vsq1*T2_vitasq1 + vsq2*T2_vitasq2 + vsq3*T2_vitasq3
+  WvitasqT2 =~ vsq1*T3_vitasq1 + vsq2*T3_vitasq2 + vsq3*T3_vitasq3
+  WvitasqT3 =~ vsq1*T4_vitasq1 + vsq2*T4_vitasq2 + vsq3*T4_vitasq3
+  WvitasqT4 =~ vsq1*T5_vitasq1 + vsq2*T5_vitasq2 + vsq3*T5_vitasq3
+
+  
   WpaT1 =~ p1*T2_pa1 + p2*T2_pa2 + p3*T2_pa3 + p4*T2_pa4 + p5*T2_pa5
   WpaT2 =~ p1*T3_pa1 + p2*T3_pa2 + p3*T3_pa3 + p4*T3_pa4 + p5*T3_pa5
   WpaT3 =~ p1*T4_pa1 + p2*T4_pa2 + p3*T4_pa3 + p4*T4_pa4 + p5*T4_pa5
@@ -1306,6 +1527,19 @@ RICLPM1.ext3 <- '
   T2_learn1 + T3_learn1 + T4_learn1 + T5_learn1 ~ l1i*1
   T2_learn2 + T3_learn2 + T4_learn2 + T5_learn2 ~ l2i*1
   T2_learn3 + T3_learn3 + T4_learn3 + T5_learn3 ~ l3i*1
+  
+  T2_vitalearn1 + T3_vitalearn1 + T4_vitalearn1 + T5_vitalearn1 ~ vl1i*1
+  T2_vitalearn2 + T3_vitalearn2 + T4_vitalearn2 + T5_vitalearn2 ~ vl2i*1
+  T2_vitalearn3 + T3_vitalearn3 + T4_vitalearn3 + T5_vitalearn3 ~ vl3i*1
+  
+  T2_learnsq1 + T3_learnsq1 + T4_learnsq1 + T5_learnsq1 ~ ls1i*1
+  T2_learnsq2 + T3_learnsq2 + T4_learnsq2 + T5_learnsq2 ~ ls2i*1
+  T2_learnsq3 + T3_learnsq3 + T4_learnsq3 + T5_learnsq3 ~ ls3i*1
+  
+  T2_vitasq1 + T3_vitasq1 + T4_vitasq1 + T5_vitasq1 ~ vs1i*1
+  T2_vitasq2 + T3_vitasq2 + T4_vitasq2 + T5_vitasq2 ~ vs2i*1
+  T2_vitasq3 + T3_vitasq3 + T4_vitasq3 + T5_vitasq3 ~ vs3i*1
+  
   
   T2_pa1 + T3_pa1 + T4_pa1 + T5_pa1 ~ p1i*1
   T2_pa2 + T3_pa2 + T4_pa2 + T5_pa2 ~ p2i*1
@@ -1360,7 +1594,7 @@ RICLPM1.ext3 <- '
   T5_sf12mcs ~~ 0*T5_sf12mcs
   
   # Free latent means from second observation onwards 
-  WvitalityT2 + WvitalityT3 + WvitalityT4 + WlearnT2 + WlearnT3 + WlearnT4 + WpaT2 + WpaT3 + WpaT4 + WnaT2 + WnaT3 + WnaT4 + WdemandsT2 + WdemandsT3 + WdemandsT4 + WautT2 + WautT3 + WautT4 + WcsupT2 + WcsupT3 + WcsupT4 + WssupT2 + WssupT3 + WssupT4 ~ 1
+  WvitalityT2 + WvitalityT3 + WvitalityT4 + WlearnT2 + WlearnT3 + WlearnT4 + WvitalearnT2 + WvitalearnT3 + WvitalearnT4 + WlearnsqT2 + WlearnsqT3 + WlearnsqT2 + WvitasqT2 + WvitasqT3 + WvitasqT4 + WpaT2 + WpaT3 + WpaT4 + WnaT2 + WnaT3 + WnaT4 + WdemandsT2 + WdemandsT3 + WdemandsT4 + WautT2 + WautT3 + WautT4 + WcsupT2 + WcsupT3 + WcsupT4 + WssupT2 + WssupT3 + WssupT4 ~ 1
   
   
   #########################
@@ -1385,6 +1619,18 @@ RICLPM1.ext3 <- '
   WlearnT2  ~ WlearnT1 
   WlearnT3  ~ WlearnT2 
   WlearnT4  ~ WlearnT3 
+  
+  WvitalearnT2  ~ WvitalearnT1 
+  WvitalearnT3  ~ WvitalearnT2 
+  WvitalearnT4  ~ WvitalearnT3
+  
+  WlearnsqT2  ~ WlearnsqT1 
+  WlearnsqT3  ~ WlearnsqT2 
+  WlearnsqT4  ~ WlearnsqT3
+  
+  WvitasqT2  ~ WvitasqT1 
+  WvitasqT3  ~ WvitasqT2 
+  WvitasqT4  ~ WvitasqT3
   
   WpaT2  ~ WpaT1 
   WpaT3  ~ WpaT2 
@@ -1412,13 +1658,13 @@ RICLPM1.ext3 <- '
   
   
   # Regressions
-  WphysT2 ~ pv*WvitalityT1 + pl*WlearnT1 + WpaT1 + WnaT1 + WdemandsT1 + WautT1 + WcsupT1 + WssupT1 
-  WphysT3 ~ pv*WvitalityT2 + pl*WlearnT2 + WpaT2 + WnaT2 + WdemandsT2 + WautT2 + WcsupT2 + WssupT2 
-  WphysT4 ~ pv*WvitalityT3 + pl*WlearnT3 + WpaT3 + WnaT3 + WdemandsT3 + WautT3 + WcsupT3 + WssupT3 
+  WphysT2 ~ pv*WvitalityT1 + pl*WlearnT1 + pvl*WvitalearnT1 + pvs*WvitasqT1 + pls*WlearnsqT1 + WpaT1 + WnaT1 + WdemandsT1 + WautT1 + WcsupT1 + WssupT1 
+  WphysT3 ~ pv*WvitalityT2 + pl*WlearnT2 + pvl*WvitalearnT2 + pvs*WvitasqT2 + pls*WlearnsqT2 + WpaT2 + WnaT2 + WdemandsT2 + WautT2 + WcsupT2 + WssupT2 
+  WphysT4 ~ pv*WvitalityT3 + pl*WlearnT3 + pvl*WvitalearnT3 + pvs*WvitasqT3 + pls*WlearnsqT3 + WpaT3 + WnaT3 + WdemandsT3 + WautT3 + WcsupT3 + WssupT3 
   
-  WmentT2 ~ mv*WvitalityT1 + ml*WlearnT1 + WpaT1 + WnaT1 + WdemandsT1 + WautT1 + WcsupT1 + WssupT1 
-  WmentT3 ~ mv*WvitalityT2 + ml*WlearnT2 + WpaT2 + WnaT2 + WdemandsT2 + WautT2 + WcsupT2 + WssupT2 
-  WmentT4 ~ mv*WvitalityT3 + ml*WlearnT3 + WpaT3 + WnaT3 + WdemandsT3 + WautT3 + WcsupT3 + WssupT3 
+  WmentT2 ~ mv*WvitalityT1 + ml*WlearnT1 + mvl*WvitalearnT1 + mvs*WvitasqT1 + mls*WlearnsqT1+ WpaT1 + WnaT1 + WdemandsT1 + WautT1 + WcsupT1 + WssupT1 
+  WmentT3 ~ mv*WvitalityT2 + ml*WlearnT2 + mvl*WvitalearnT2 + mvs*WvitasqT2 + mls*WlearnsqT2+ WpaT2 + WnaT2 + WdemandsT2 + WautT2 + WcsupT2 + WssupT2 
+  WmentT4 ~ mv*WvitalityT3 + ml*WlearnT3 + mvl*WvitalearnT3 + mvs*WvitasqT3 + mls*WlearnsqT3+ WpaT3 + WnaT3 + WdemandsT3 + WautT3 + WcsupT3 + WssupT3 
   
   WvitalityT2 ~ vp*WphysT1 + vm*WmentT1
   WvitalityT3 ~ vp*WphysT1 + vm*WmentT1
@@ -1427,35 +1673,347 @@ RICLPM1.ext3 <- '
   WlearnT2 ~ lp*WphysT1 + lm*WmentT1
   WlearnT3 ~ lp*WphysT2 + lm*WmentT2
   WlearnT4 ~ lp*WphysT3 + lm*WmentT3
+  
+  WvitalearnT2 ~ vlp*WphysT1 + vlm*WmentT1
+  WvitalearnT3 ~ vlp*WphysT2 + vlm*WmentT2
+  WvitalearnT4 ~ vlp*WphysT3 + vlm*WmentT3
+  
+  WlearnsqT2 ~ lsp*WphysT1 + lsm*WmentT1
+  WlearnsqT3 ~ lsp*WphysT2 + lsm*WmentT2
+  WlearnsqT4 ~ lsp*WphysT3 + lsm*WmentT3
+  
+  WvitasqT2 ~ vsp*WphysT1 + vsm*WmentT1
+  WvitasqT3 ~ vsp*WphysT2 + vsm*WmentT2
+  WvitasqT4 ~ vsp*WphysT3 + vsm*WmentT3
     
   
   # Estimate the correlations Wthin the same wave.
-  WphysT1 + WmentT1 + WvitalityT1 ~~ WlearnT1
-  WphysT1 + WmentT1 ~~ WvitalityT1
-  WphysT1 ~~ WmentT1
+  WvitalityT1 + WphysT1 + WmentT1 + WvitalearnT1 + WlearnsqT1 + WvitasqT1 + WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WlearnT1
+  WphysT1 + WmentT1 + WvitalearnT1 + WlearnsqT1 + WvitasqT1 + WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WvitalityT1
+  WmentT1 + WvitalearnT1 + WlearnsqT1 + WvitasqT1 + WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WphysT1
+  WvitalearnT1 + WlearnsqT1 + WvitasqT1 + WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WmentT1
+  WlearnsqT1 + WvitasqT1 + WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WvitalearnT1
+  WvitasqT1 + WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WlearnsqT1
+  WpaT1  + WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WvitasqT1
+  WnaT1 + WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WpaT1
+  WdemandsT1 +  WautT1 + WcsupT1 + WssupT1 ~~ WnaT1
+  WautT1 + WcsupT1 + WssupT1 ~~ WdemandsT1
+  WcsupT1 + WssupT1 ~~ WautT1
+  WssupT1 ~~ WcsupT1
   
-  WphysT2 + WmentT2 + WvitalityT2 ~~ WlearnT2
-  WphysT2 + WmentT2 ~~ WvitalityT2
-  WphysT2 ~~ WmentT2
+  WvitalityT2 + WphysT2 + WmentT2 + WvitalearnT2 + WlearnsqT2 + WvitasqT2 + WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WlearnT2
+  WphysT2 + WmentT2 + WvitalearnT2 + WlearnsqT2 + WvitasqT2 + WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WvitalityT2
+  WmentT2 + WvitalearnT2 + WlearnsqT2 + WvitasqT2 + WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WphysT2
+  WvitalearnT2 + WlearnsqT2 + WvitasqT2 + WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WmentT2
+  WlearnsqT2 + WvitasqT2 + WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WvitalearnT2
+  WvitasqT2 + WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WlearnsqT2
+  WpaT2  + WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WvitasqT2
+  WnaT2 + WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WpaT2
+  WdemandsT2 +  WautT2 + WcsupT2 + WssupT2 ~~ WnaT2
+  WautT2 + WcsupT2 + WssupT2 ~~ WdemandsT2
+  WcsupT2 + WssupT2 ~~ WautT2
+  WssupT2 ~~ WcsupT2
   
-  WphysT3 + WmentT3 + WvitalityT3 ~~ WlearnT3
-  WphysT3 + WmentT3 ~~ WvitalityT3
-  WphysT3 ~~ WmentT3
+  WvitalityT3 + WphysT3 + WmentT3 + WvitalearnT3 + WlearnsqT3 + WvitasqT3 + WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WlearnT3
+  WphysT3 + WmentT3 + WvitalearnT3 + WlearnsqT3 + WvitasqT3 + WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WvitalityT3
+  WmentT3 + WvitalearnT3 + WlearnsqT3 + WvitasqT3 + WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WphysT3
+  WvitalearnT3 + WlearnsqT3 + WvitasqT3 + WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WmentT3
+  WlearnsqT3 + WvitasqT3 + WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WvitalearnT3
+  WvitasqT3 + WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WlearnsqT3
+  WpaT3  + WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WvitasqT3
+  WnaT3 + WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WpaT3
+  WdemandsT3 +  WautT3 + WcsupT3 + WssupT3 ~~ WnaT3
+  WautT3 + WcsupT3 + WssupT3 ~~ WdemandsT3
+  WcsupT3 + WssupT3 ~~ WautT3
+  WssupT3 ~~ WcsupT3
   
-  WphysT4 + WmentT4 + WvitalityT4 ~~ WlearnT4
-  WphysT4 + WmentT4 ~~ WvitalityT4
-  WphysT4 ~~ WmentT4
-
+  WvitalityT4 + WphysT4 + WmentT4 + WvitalearnT4 + WlearnsqT4 + WvitasqT4 + WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WlearnT4
+  WphysT4 + WmentT4 + WvitalearnT4 + WlearnsqT4 + WvitasqT4 + WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WvitalityT4
+  WmentT4 + WvitalearnT4 + WlearnsqT4 + WvitasqT4 + WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WphysT4
+  WvitalearnT4 + WlearnsqT4 + WvitasqT4 + WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WmentT4
+  WlearnsqT4 + WvitasqT4 + WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WvitalearnT4
+  WvitasqT4 + WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WlearnsqT4
+  WpaT4  + WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WvitasqT4
+  WnaT4 + WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WpaT4
+  WdemandsT4 +  WautT4 + WcsupT4 + WssupT4 ~~ WnaT4
+  WautT4 + WcsupT4 + WssupT4 ~~ WdemandsT4
+  WcsupT4 + WssupT4 ~~ WautT4
+  WssupT4 ~~ WcsupT4
+  
   
   ##########################
   # ADDITIONAL CONSTRAINTS #
   ##########################
   
   # Constrain covariance of the between factors and exogenous within factors to 0. 
-  RIvitality1 + RIvitality2 + RIvitality3 + RIlearn1 + RIlearn2 + RIlearn3 + RIpa1 + RIpa2 + RIpa3 + RIpa4 + RIpa5 + RIna1 + RIna2 + RIna3 + RIna4 + RIna5 + RIdemands1 + RIdemands2 + RIdemands3 + RIaut1 + RIaut2 + RIaut3 + RIcsup1 + RIcsup2 + RIcsup3 + RIcsup4 + RIssup1 + RIssup2 + RIssup3 + RIssup4 + RIphys + RIment ~~ 0*WvitalityT1 + 0*WlearnT1 + 0*WpaT1 + 0*WnaT1 + 0*WdemandsT1 + 0*WautT1 + 0*WcsupT1 + 0*WssupT1 + 0*WphysT1 + 0*WmentT1 
+  RIvitality1 + RIvitality2 + RIvitality3 + RIlearn1 + RIlearn2 + RIlearn3+ RIvitalearn1 + RIvitalearn2 + RIvitalearn3 + RIlearnsq1 + RIlearnsq2 + RIlearnsq3 + RIvitasq1 + RIvitasq2 + RIvitasq3 + RIpa1 + RIpa2 + RIpa3 + RIpa4 + RIpa5 + RIna1 + RIna2 + RIna3 + RIna4 + RIna5 + RIdemands1 + RIdemands2 + RIdemands3 + RIaut1 + RIaut2 + RIaut3 + RIcsup1 + RIcsup2 + RIcsup3 + RIcsup4 + RIssup1 + RIssup2 + RIssup3 + RIssup4 + RIphys + RIment ~~ 0*WvitalityT1 + 0*WlearnT1 + 0*WvitalearnT1 + 0*WlearnsqT1 + 0*WvitasqT1 + 0*WpaT1 + 0*WnaT1 + 0*WdemandsT1 + 0*WautT1 + 0*WcsupT1 + 0*WssupT1 + 0*WphysT1 + 0*WmentT1 
+'
+RICLPM1.ext3.fit <- cfa(RICLPM1.ext3, data = dataset, missing = 'ML')
+options(max.print=1000000)
+summary(RICLPM1.ext3.fit, standardized = T,  fit.measures=TRUE)
+#modificationindices(RICLPM1.ext3.fit)
+```
+
+# RI-CLPM only vitality and learning linear, interaction, and quadratic 
+
+```{r eval = FALSE}
+RICLPM1.ext3 <- '
+  
+  ################
+  # BETWEEN PART #
+  ################
+  
+  # Create between factors (random intercepts) for each indicator separately.
+  RIvitality1 =~ 1*T2_vitality1 + 1*T3_vitality1 + 1*T4_vitality1 + 1*T5_vitality1
+  RIvitality2 =~ 1*T2_vitality2 + 1*T3_vitality2 + 1*T4_vitality2 + 1*T5_vitality2
+  RIvitality3 =~ 1*T2_vitality5 + 1*T3_vitality5 + 1*T4_vitality5 + 1*T5_vitality5
+  
+  RIlearn1 =~ 1*T2_learn1 + 1*T3_learn1 + 1*T4_learn1 + 1*T5_learn1
+  RIlearn2 =~ 1*T2_learn2 + 1*T3_learn2 + 1*T4_learn1 + 1*T5_learn2
+  RIlearn3 =~ 1*T2_learn3 + 1*T3_learn3 + 1*T4_learn1 + 1*T5_learn3
+  
+  RIvitalearn1 =~ 1*T2_vitalearn1 + 1*T3_vitalearn1 + 1*T4_vitalearn1 + 1*T5_vitalearn1
+  RIvitalearn2 =~ 1*T2_vitalearn2 + 1*T3_vitalearn2 + 1*T4_vitalearn2 + 1*T5_vitalearn2
+  RIvitalearn3 =~ 1*T2_vitalearn3 + 1*T3_vitalearn3 + 1*T4_vitalearn3 + 1*T5_vitalearn3
+
+  RIvitasq1 =~ 1*T2_vitasq1 + 1*T3_vitasq1 + 1*T4_vitasq1 + 1*T5_vitasq1
+  RIvitasq2 =~ 1*T2_vitasq2 + 1*T3_vitasq2 + 1*T4_vitasq2 + 1*T5_vitasq2
+  RIvitasq3 =~ 1*T2_vitasq3 + 1*T3_vitasq3 + 1*T4_vitasq3 + 1*T5_vitasq3
+
+  RIlearnsq1 =~ 1*T2_learnsq1 + 1*T3_learnsq1 + 1*T4_learnsq1 + 1*T5_learnsq1
+  RIlearnsq2 =~ 1*T2_learnsq2 + 1*T3_learnsq2 + 1*T4_learnsq2 + 1*T5_learnsq2
+  RIlearnsq3 =~ 1*T2_learnsq3 + 1*T3_learnsq3 + 1*T4_learnsq3 + 1*T5_learnsq3
+  
+  RIphys =~ 1*T2_sf12pcs + 1*T3_sf12pcs + 1*T4_sf12pcs + 1*T5_sf12pcs
+  RIment =~ 1*T2_sf12mcs + 1*T3_sf12mcs + 1*T4_sf12mcs + 1*T5_sf12mcs
+  
+  RIvitality =~ RIvitality1 + RIvitality2 + RIvitality3
+  RIlearn =~ RIlearn1 + RIlearn2 + RIlearn3
+  RIvitalearn =~ RIvitalearn1 + RIvitalearn2 + RIvitalearn3
+  RIvitasq =~ RIvitasq1 + RIvitasq2 + RIvitasq3
+  RIlearnsq =~ RIlearnsq1 + RIlearnsq2 + RIlearnsq3
+  
+  
+  RIphys ~~  RIment + RIvitality + RIlearn + RIvitalearn + RIvitasq + RIlearnsq
+  RIment ~~  RIvitality + RIlearn + RIvitalearn + RIvitasq + RIlearnsq
+  # no variance for RIphys and RIment because set to 0!
+  
+  RIvitality ~~ RIvitality + RIlearn + RIvitalearn + RIvitasq + RIlearnsq
+  RIlearn ~~ RIlearn + RIvitalearn + RIvitasq + RIlearnsq
+  RIvitalearn ~~ RIvitalearn + RIvitasq + RIlearnsq
+  RIvitasq ~~ RIvitasq + RIlearnsq
+  RIlearnsq ~~ RIlearnsq
+  
+  RIvitality1 ~~ 0*RIvitality1
+  RIvitality2 ~~ 0*RIvitality2
+  RIvitality3 ~~ 0*RIvitality3
+  
+  RIlearn1 ~~ 0*RIlearn1
+  RIlearn2 ~~ 0*RIlearn2
+  RIlearn3 ~~ 0*RIlearn3  
+  
+  RIvitalearn1 ~~ 0*RIvitalearn1
+  RIvitalearn2 ~~ 0*RIvitalearn2
+  RIvitalearn3 ~~ 0*RIvitalearn3
+  
+  RIvitasq1 ~~ 0*RIvitasq1
+  RIvitasq2 ~~ 0*RIvitasq2
+  RIvitasq3 ~~ 0*RIvitasq3
+
+  RIlearnsq1 ~~ 0*RIlearnsq1
+  RIlearnsq2 ~~ 0*RIlearnsq2
+  RIlearnsq3 ~~ 0*RIlearnsq3
+  
+  RIphys ~~ 0*RIphys
+  RIment ~~ 0*RIment
+  
+  
+  ##################################
+  # WITHIN PART: MEASUREMENT MODEL #
+  ##################################
+  
+  # Factor models for the four waves.
+  WvitalityT1 =~ v1*T2_vitality1 + v2*T2_vitality2 + v3*T2_vitality5
+  WvitalityT2 =~ v1*T3_vitality1 + v2*T3_vitality2 + v3*T3_vitality5
+  WvitalityT3 =~ v1*T4_vitality1 + v2*T4_vitality2 + v3*T4_vitality5
+  WvitalityT4 =~ v1*T5_vitality1 + v2*T5_vitality2 + v3*T5_vitality5
+  
+  WlearnT1 =~ l1*T2_learn1 + l2*T2_learn2 + l3*T2_learn3
+  WlearnT2 =~ l1*T3_learn1 + l2*T3_learn2 + l3*T3_learn3
+  WlearnT3 =~ l1*T4_learn1 + l2*T4_learn2 + l3*T4_learn3
+  WlearnT4 =~ l1*T5_learn1 + l2*T5_learn2 + l3*T5_learn3
+  
+  WvitalearnT1 =~ vl1*T2_vitalearn1 + vl2*T2_vitalearn2 + vl3*T2_vitalearn3
+  WvitalearnT2 =~ vl1*T3_vitalearn1 + vl2*T3_vitalearn2 + vl3*T3_vitalearn3
+  WvitalearnT3 =~ vl1*T4_vitalearn1 + vl2*T4_vitalearn2 + vl3*T4_vitalearn3
+  WvitalearnT4 =~ vl1*T5_vitalearn1 + vl2*T5_vitalearn2 + vl3*T5_vitalearn3
+
+  WlearnsqT1 =~ lsq1*T2_learnsq1 + lsq2*T2_learnsq2 + lsq3*T2_learnsq3
+  WlearnsqT2 =~ lsq1*T3_learnsq1 + lsq2*T3_learnsq2 + lsq3*T3_learnsq3
+  WlearnsqT3 =~ lsq1*T4_learnsq1 + lsq2*T4_learnsq2 + lsq3*T4_learnsq3
+  WlearnsqT4 =~ lsq1*T5_learnsq1 + lsq2*T5_learnsq2 + lsq3*T5_learnsq3
+  
+  WvitasqT1 =~ vsq1*T2_vitasq1 + vsq2*T2_vitasq2 + vsq3*T2_vitasq3
+  WvitasqT2 =~ vsq1*T3_vitasq1 + vsq2*T3_vitasq2 + vsq3*T3_vitasq3
+  WvitasqT3 =~ vsq1*T4_vitasq1 + vsq2*T4_vitasq2 + vsq3*T4_vitasq3
+  WvitasqT4 =~ vsq1*T5_vitasq1 + vsq2*T5_vitasq2 + vsq3*T5_vitasq3
+  
+
+  # constrain intercepts
+  T2_vitality1 + T3_vitality1 + T4_vitality1 + T5_vitality1 ~ v1i*1
+  T2_vitality2 + T3_vitality2 + T4_vitality2 + T5_vitality2 ~ v2i*1
+  T2_vitality5 + T3_vitality5 + T4_vitality5 + T5_vitality5 ~ v3i*1
+  
+  T2_learn1 + T3_learn1 + T4_learn1 + T5_learn1 ~ l1i*1
+  T2_learn2 + T3_learn2 + T4_learn2 + T5_learn2 ~ l2i*1
+  T2_learn3 + T3_learn3 + T4_learn3 + T5_learn3 ~ l3i*1
+  
+  T2_vitalearn1 + T3_vitalearn1 + T4_vitalearn1 + T5_vitalearn1 ~ vl1i*1
+  T2_vitalearn2 + T3_vitalearn2 + T4_vitalearn2 + T5_vitalearn2 ~ vl2i*1
+  T2_vitalearn3 + T3_vitalearn3 + T4_vitalearn3 + T5_vitalearn3 ~ vl3i*1
+  
+  T2_learnsq1 + T3_learnsq1 + T4_learnsq1 + T5_learnsq1 ~ ls1i*1
+  T2_learnsq2 + T3_learnsq2 + T4_learnsq2 + T5_learnsq2 ~ ls2i*1
+  T2_learnsq3 + T3_learnsq3 + T4_learnsq3 + T5_learnsq3 ~ ls3i*1
+  
+  T2_vitasq1 + T3_vitasq1 + T4_vitasq1 + T5_vitasq1 ~ vs1i*1
+  T2_vitasq2 + T3_vitasq2 + T4_vitasq2 + T5_vitasq2 ~ vs2i*1
+  T2_vitasq3 + T3_vitasq3 + T4_vitasq3 + T5_vitasq3 ~ vs3i*1
+  
+
+  # Factor models for health
+  WphysT1 =~ p*T2_sf12pcs
+  WphysT2 =~ p*T3_sf12pcs
+  WphysT3 =~ p*T4_sf12pcs
+  WphysT4 =~ p*T5_sf12pcs
+  
+  WmentT1 =~ m*T2_sf12mcs
+  WmentT2 =~ m*T3_sf12mcs
+  WmentT3 =~ m*T4_sf12mcs
+  WmentT4 =~ m*T5_sf12mcs
+  
+  T2_sf12pcs + T3_sf12pcs + T4_sf12pcs + T5_sf12pcs ~ pi*1
+  T2_sf12mcs + T3_sf12mcs + T4_sf12mcs + T5_sf12mcs ~ mi*1
+  
+  T2_sf12pcs ~~ 0*T2_sf12pcs
+  T3_sf12pcs ~~ 0*T3_sf12pcs
+  T4_sf12pcs ~~ 0*T4_sf12pcs
+  T5_sf12pcs ~~ 0*T5_sf12pcs
+  
+  T2_sf12mcs ~~ 0*T2_sf12mcs
+  T3_sf12mcs ~~ 0*T3_sf12mcs
+  T4_sf12mcs ~~ 0*T4_sf12mcs
+  T5_sf12mcs ~~ 0*T5_sf12mcs
+  
+  # Free latent means from second observation onwards 
+  WvitalityT2 + WvitalityT3 + WvitalityT4 + WlearnT2 + WlearnT3 + WlearnT4 + WvitalearnT2 + WvitalearnT3 + WvitalearnT4 + WlearnsqT2 + WlearnsqT3 + WlearnsqT2 + WvitasqT2 + WvitasqT3 + WvitasqT4 ~ 1
+  
+  
+  #########################
+  # WITHIN PART: DYNAMICS #
+  #########################
+  
+  # Specify the lagged effects between the within-person centered latent variables.
+  # Auto effects 
+  
+  WphysT2  ~ WphysT1 
+  WphysT3  ~ WphysT2 
+  WphysT4  ~ WphysT3 
+  
+  WmentT2  ~ WmentT1 
+  WmentT3  ~ WmentT2 
+  WmentT4  ~ WmentT3 
+  
+  WvitalityT2  ~ WvitalityT1 
+  WvitalityT3  ~ WvitalityT2 
+  WvitalityT4  ~ WvitalityT3 
+  
+  WlearnT2  ~ WlearnT1 
+  WlearnT3  ~ WlearnT2 
+  WlearnT4  ~ WlearnT3 
+  
+  WvitalearnT2  ~ WvitalearnT1 
+  WvitalearnT3  ~ WvitalearnT2 
+  WvitalearnT4  ~ WvitalearnT3
+  
+  WlearnsqT2  ~ WlearnsqT1 
+  WlearnsqT3  ~ WlearnsqT2 
+  WlearnsqT4  ~ WlearnsqT3
+  
+  WvitasqT2  ~ WvitasqT1 
+  WvitasqT3  ~ WvitasqT2 
+  WvitasqT4  ~ WvitasqT3
+
+  
+  # Regressions
+  WphysT2 ~ pv*WvitalityT1 + pl*WlearnT1 + pvl*WvitalearnT1 + pvs*WvitasqT1 + pls*WlearnsqT1 
+  WphysT3 ~ pv*WvitalityT2 + pl*WlearnT2 + pvl*WvitalearnT2 + pvs*WvitasqT2 + pls*WlearnsqT2  
+  WphysT4 ~ pv*WvitalityT3 + pl*WlearnT3 + pvl*WvitalearnT3 + pvs*WvitasqT3 + pls*WlearnsqT3 
+  
+  WmentT2 ~ mv*WvitalityT1 + ml*WlearnT1 + mvl*WvitalearnT1 + mvs*WvitasqT1 + mls*WlearnsqT1
+  WmentT3 ~ mv*WvitalityT2 + ml*WlearnT2 + mvl*WvitalearnT2 + mvs*WvitasqT2 + mls*WlearnsqT2
+  WmentT4 ~ mv*WvitalityT3 + ml*WlearnT3 + mvl*WvitalearnT3 + mvs*WvitasqT3 + mls*WlearnsqT3 
+  
+  WvitalityT2 ~ vp*WphysT1 + vm*WmentT1
+  WvitalityT3 ~ vp*WphysT1 + vm*WmentT1
+  WvitalityT4 ~ vp*WphysT1 + vm*WmentT1
+  
+  WlearnT2 ~ lp*WphysT1 + lm*WmentT1
+  WlearnT3 ~ lp*WphysT2 + lm*WmentT2
+  WlearnT4 ~ lp*WphysT3 + lm*WmentT3
+  
+  WvitalearnT2 ~ vlp*WphysT1 + vlm*WmentT1
+  WvitalearnT3 ~ vlp*WphysT2 + vlm*WmentT2
+  WvitalearnT4 ~ vlp*WphysT3 + vlm*WmentT3
+  
+  WlearnsqT2 ~ lsp*WphysT1 + lsm*WmentT1
+  WlearnsqT3 ~ lsp*WphysT2 + lsm*WmentT2
+  WlearnsqT4 ~ lsp*WphysT3 + lsm*WmentT3
+  
+  WvitasqT2 ~ vsp*WphysT1 + vsm*WmentT1
+  WvitasqT3 ~ vsp*WphysT2 + vsm*WmentT2
+  WvitasqT4 ~ vsp*WphysT3 + vsm*WmentT3
+    
+  
+  # Estimate the correlations Wthin the same wave.
+  WvitalityT1 + WphysT1 + WmentT1 + WvitalearnT1 + WlearnsqT1 + WvitasqT1 ~~ WlearnT1
+  WphysT1 + WmentT1 + WvitalearnT1 + WlearnsqT1 + WvitasqT1 ~~ WvitalityT1
+  WmentT1 + WvitalearnT1 + WlearnsqT1 + WvitasqT1  ~~ WphysT1
+  WvitalearnT1 + WlearnsqT1 + WvitasqT1 ~~ WmentT1
+  WlearnsqT1 + WvitasqT1 ~~ WvitalearnT1
+  WvitasqT1 ~~ WlearnsqT1
+  
+  WvitalityT2 + WphysT2 + WmentT2 + WvitalearnT2 + WlearnsqT2 + WvitasqT2 ~~ WlearnT2
+  WphysT2 + WmentT2 + WvitalearnT2 + WlearnsqT2 + WvitasqT2 ~~ WvitalityT2
+  WmentT2 + WvitalearnT2 + WlearnsqT2 + WvitasqT2  ~~ WphysT2
+  WvitalearnT2 + WlearnsqT2 + WvitasqT2 ~~ WmentT2
+  WlearnsqT2 + WvitasqT2 ~~ WvitalearnT2
+  WvitasqT2 ~~ WlearnsqT2
+  
+  WvitalityT3 + WphysT3 + WmentT3 + WvitalearnT3 + WlearnsqT3 + WvitasqT3 ~~ WlearnT3
+  WphysT3 + WmentT3 + WvitalearnT3 + WlearnsqT3 + WvitasqT3 ~~ WvitalityT3
+  WmentT3 + WvitalearnT3 + WlearnsqT3 + WvitasqT3  ~~ WphysT3
+  WvitalearnT3 + WlearnsqT3 + WvitasqT3 ~~ WmentT3
+  WlearnsqT3 + WvitasqT3 ~~ WvitalearnT3
+  WvitasqT3 ~~ WlearnsqT3
+  
+  WvitalityT4 + WphysT4 + WmentT4 + WvitalearnT4 + WlearnsqT4 + WvitasqT4 ~~ WlearnT4
+  WphysT4 + WmentT4 + WvitalearnT4 + WlearnsqT4 + WvitasqT4 ~~ WvitalityT4
+  WmentT4 + WvitalearnT4 + WlearnsqT4 + WvitasqT4  ~~ WphysT4
+  WvitalearnT4 + WlearnsqT4 + WvitasqT4 ~~ WmentT4
+  WlearnsqT4 + WvitasqT4 ~~ WvitalearnT4
+  WvitasqT4 ~~ WlearnsqT4
+  
+  
+  ##########################
+  # ADDITIONAL CONSTRAINTS #
+  ##########################
+  
+  # Constrain covariance of the between factors and exogenous within factors to 0. 
+  RIvitality1 + RIvitality2 + RIvitality3 + RIlearn1 + RIlearn2 + RIlearn3+ RIvitalearn1 + RIvitalearn2 + RIvitalearn3 + RIlearnsq1 + RIlearnsq2 + RIlearnsq3 + RIvitasq1 + RIvitasq2 + RIvitasq3 + RIphys + RIment ~~ 0*WvitalityT1 + 0*WlearnT1 + 0*WvitalearnT1 + 0*WlearnsqT1 + 0*WvitasqT1 + 0*WphysT1 + 0*WmentT1 
 '
 RICLPM1.ext3.fit <- cfa(RICLPM1.ext3, data = dataset, missing = 'ML')
 summary(RICLPM1.ext3.fit, standardized = T,  fit.measures=TRUE)
-
+#modificationindices(RICLPM1.ext3.fit)
 ```
 

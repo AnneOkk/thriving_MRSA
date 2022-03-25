@@ -79,7 +79,7 @@ for (file in doc.files) {
 ```
 
 ```{r, include=FALSE}
-Thriving_analyses <- TRUE
+Thriving_analyses <- FALSE
 Online_appendix <- TRUE
 ```
 
