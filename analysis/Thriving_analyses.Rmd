@@ -193,13 +193,15 @@ cor_tab <- comp_df %>%select(ends_with("vitality"), ends_with("learn"), ends_wit
 
 names(cor_tab)
 
-corstar <- data.frame(corstars_no_stars(cor_tab, removeTriangle = "upper", result="none"))
+corstar <- data.frame(corstars_no_stars(cor_tab, removeTriangle = "none", result="none"))
 
 Mean <- round(colMeans(cor_tab, na.rm =T),2)
 SD <- round(apply(cor_tab, 2, sd, na.rm = T),2)
 mean_sd <- as.data.frame(rbind(Mean, SD)) %>% t()
 
 corstar_select <- cbind(mean_sd, corstar)
+
+
 
 res2 <- rcorr(as.matrix(cor_tab))
 cat("Range of available data:", range(res2$n))

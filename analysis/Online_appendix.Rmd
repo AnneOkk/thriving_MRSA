@@ -124,7 +124,62 @@ plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
                 pad = c(1,2,-3), xlim = c(-3, 3), ylim = c(-3, 3)
                )
 rglwidget()
+
+
 ```
+
+
+
+```{r}
+library(plotly)
+library(geomorph)
+
+
+mesh <- read.ply("https://people.sc.fsu.edu/~jburkardt/data/ply/chopper.ply")
+
+# see getS3method("shade3d", "mesh3d") for details on how to plot
+
+
+# plot point cloud
+
+x <- plotting_df$x.c
+
+y <- plotting_df$y.c
+
+z <- plotting_df$sf12pcs
+
+m <- matrix(c(x,y,z), ncol=3, dimnames=list(NULL,c("x","y","z")))
+
+
+# now figure out the colormap
+
+zmean <- apply(t(mesh$it),MARGIN=1,function(row){mean(m[row,3])})
+
+
+library(scales)
+
+facecolor = colour_ramp(
+
+  brewer_pal(palette="RdBu")(9)
+
+)(rescale(x=zmean))
+
+
+fig <- plot_ly(
+
+  x = x, y = y, z = z,
+
+  #i = mesh$it[1,]-1, j = mesh$it[2,]-1, k = mesh$it[3,]-1,
+
+  #facecolor = facecolor,
+
+  type = "mesh3d"
+
+)
+
+fig
+```
+
 
 ## Mental health
 

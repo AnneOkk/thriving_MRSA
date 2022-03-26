@@ -1,8 +1,8 @@
 unnamed-chunk-2	
-unnamed-chunk-5	::	%>%	$	$<-	c	colnames	colnames<-	column_to_rownames	list	mgsub	read_excel	remove_rownames	rownames	rownames<-	sprintf
-unnamed-chunk-6	%>%	<	>	~	$	c	F	fixef	list	lmer	lmerControl	plotRSA	quantile	read_excel	rglwidget	select	sf12pcs	subset	T	x.c	y.c
-unnamed-chunk-7	%>%	<	>	~	$	c	F	fixef	list	lmer	lmerControl	name_vars	plotRSA	quantile	read_excel	rglwidget	select	sf12mcs	subset	T	x.c	y.c
-unnamed-chunk-8	%>%	~	$	$<-	all_of	apply	as.data.frame	as.matrix	autofit	body_add_flextable	body_end_section_landscape	c	cat	cbind	col	colMeans	comp_df	corstars_no_stars	data.frame	ends_with	flextable	fontsize	getwd	length	mutate_at	names	names<-	paste0	print	range	rbind	rcorr	read_docx	round	row	rownames	rownames_to_column	rownames<-	sd	select	sub	substr	t	T	T1_age	T1_edu	T1_tenure_org	upper.tri	vars	width
+unnamed-chunk-5	::	%>%	$	$<-	c	colnames	colnames<-	column_to_rownames	list	mgsub	read_excel	remove_rownames	rownames	rownames<-	sprintf	write.csv
+unnamed-chunk-6	%>%	<	>	~	$	c	F	fixef	list	lmer	lmerControl	plotRSA	quantile	read_excel	rglwidget	select	sf12pcs	subset	T	write.csv	x.c	y.c
+unnamed-chunk-7	$	apply	brewer_pal	c	colour_ramp	library	list	matrix	mean	plot_ly	read.ply	rescale	t
+unnamed-chunk-8	%>%	<	>	~	$	c	F	fixef	list	lmer	lmerControl	name_vars	plotRSA	quantile	read_excel	rglwidget	select	sf12mcs	subset	T	x.c	y.c
 unnamed-chunk-9	
 unnamed-chunk-10	::	@	%>%	as.character	c	cfa	compareFit	dataset	kable	kable_classic	list	matches	measEq.syntax	summary
 unnamed-chunk-11	%>%	$<-	c	matches	nrow	pivot_longer	sem	seq.int	summary
