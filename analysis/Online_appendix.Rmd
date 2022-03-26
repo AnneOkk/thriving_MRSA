@@ -65,6 +65,8 @@ corstar_select %>%
                    pageLength = 15,
                   lengthMenu = c(25, 50, 75, 94)))
 
+write.csv(corstar_select,"../../corstar_select.csv", row.names = TRUE) 
+
 ```
 
 $~$
@@ -102,6 +104,10 @@ b4 <- fixef(mphys_randomX_Y)[name_vars[4]]
 b5 <- fixef(mphys_randomX_Y)[name_vars[5]]
 
 plotting_df <- longer_comp %>% select(x.c, y.c, sf12pcs)
+
+write.csv(plotting_df,"../../response_surface.csv", row.names = TRUE) 
+
+
 loquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[1]
 upquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[2]
 
