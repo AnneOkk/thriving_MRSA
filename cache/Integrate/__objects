@@ -1,9 +1,9 @@
 unnamed-chunk-2	Online_appendix	Thriving_analyses
 unnamed-chunk-5	corstar_select	.cache/Integrate/unnamed-chunk-5_3beb235ba2d32ebe9033f3d7124fa818_meta
-unnamed-chunk-6	b0	b1	b2	b3	b4	b5	longer_comp	loquant	mphys_randomX_Y	name_vars	plot	plotting_df	upquant	.cache/Integrate/unnamed-chunk-6_f651b5b10585c0c05539adf9e850a5bc_meta
-unnamed-chunk-7	facecolor	fig	m	mesh	x	y	z	zmean	.cache/Integrate/unnamed-chunk-7_6f242021d7d2394039504ed4ab721521_meta
-unnamed-chunk-8	b0	b1	b2	b3	b4	b5	longer_comp	loquant	mment_randomX_Y	plot	plotting_df	upquant	.cache/Integrate/unnamed-chunk-8_2a13ce8c48ab4c3089814c69b9c97fd6_meta
-unnamed-chunk-9	
+unnamed-chunk-6	b0	b1	b2	b3	b4	b5	longer_comp	mphys_randomX_Y	name_vars	plotting_df
+unnamed-chunk-7	df	x	y	z	z_pred	.cache/Integrate/unnamed-chunk-7_9abd24bc684a424c505b4c5f13afeab2_meta
+unnamed-chunk-8	b0	b1	b2	b3	b4	b5	longer_comp	mment_randomX_Y	plotting_df
+unnamed-chunk-9	df	x	y	z	z_pred	.cache/Integrate/unnamed-chunk-9_f17bf98ccd19abf0d44a787e9775e86a_meta
 unnamed-chunk-10	fit	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
 unnamed-chunk-11	dataset	fit	longer	model
 unnamed-chunk-12	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong

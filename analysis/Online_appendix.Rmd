@@ -106,41 +106,15 @@ b5 <- fixef(mphys_randomX_Y)[name_vars[5]]
 plotting_df <- longer_comp %>% select(x.c, y.c, sf12pcs)
 
 write.csv(plotting_df,"../../response_surface.csv", row.names = TRUE) 
-
-
-loquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[1]
-upquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[2]
-
-plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
-plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
-
-
-plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
-                type = "interactive", surface = NULL,
-                points = 
-                  list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
-                       color = "black", cex = 0.0007, out.mark = FALSE),
-                xlab = "Vitality", ylab = "Learning", zlab = "Physical Health", bw = T,
-                pad = c(1,2,-3), xlim = c(-3, 3), ylim = c(-3, 3)
-               )
-rglwidget()
-
-
 ```
 
 
 
-```{r}
+```{r echo= FALSE}
 library(plotly)
 library(geomorph)
 
-
-mesh <- read.ply("https://people.sc.fsu.edu/~jburkardt/data/ply/chopper.ply")
-
-# see getS3method("shade3d", "mesh3d") for details on how to plot
-
-
-# plot point cloud
+set.seed(123)
 
 x <- plotting_df$x.c
 
@@ -148,37 +122,26 @@ y <- plotting_df$y.c
 
 z <- plotting_df$sf12pcs
 
-m <- matrix(c(x,y,z), ncol=3, dimnames=list(NULL,c("x","y","z")))
+  
+z_pred = (b0 + (b1*x) + (b2*y) + (b3*(x**2)) + (b4*(x*y)) + (b5*(y**2)))
 
+df <- data.frame(x, y, z, z_pred)
 
-# now figure out the colormap
+plot_ly(z = df, type = "surface") %>% 
+  add_trace(text = "Data point", name = "Data point", data = df, x = x, y = y, z = z, mode = "markers", type = "scatter3d", 
+            marker = list(size = 4, color = "red", symbol = 104)) %>%
+  add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d") %>%
+  layout(showlegend = FALSE, 
+         scene = list(
+           xaxis = list(title = "Vitality"),
+           yaxis = list(title = "Learning"),
+           zaxis = list(title = "Physical health"),
+           aspectratio = list(x=1, y=1, z=1)))
 
-zmean <- apply(t(mesh$it),MARGIN=1,function(row){mean(m[row,3])})
-
-
-library(scales)
-
-facecolor = colour_ramp(
-
-  brewer_pal(palette="RdBu")(9)
-
-)(rescale(x=zmean))
-
-
-fig <- plot_ly(
-
-  x = x, y = y, z = z,
-
-  #i = mesh$it[1,]-1, j = mesh$it[2,]-1, k = mesh$it[3,]-1,
-
-  #facecolor = facecolor,
-
-  type = "mesh3d"
-
-)
-
-fig
 ```
+
+
+
 
 
 ## Mental health
@@ -206,22 +169,33 @@ b4 <- fixef(mment_randomX_Y)[name_vars[4]]
 b5 <- fixef(mment_randomX_Y)[name_vars[5]]
 
 plotting_df <- longer_comp %>% select(x.c, y.c, sf12mcs)
-loquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[1]
-upquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[2]
-
-plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
-plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
-
-
-
-plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
-                type = "interactive", surface = NULL,
-                points = 
-                  list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
-                       color = "black", cex = 0.07, out.mark = FALSE),
-                xlab = "Vitality", ylab = "Learning", zlab = "Mental Health", bw = T,
-                pad = c(1,2,-3), xlim = c(-3, 3), ylim = c(-3, 3)
-               )
-rglwidget()
 ```
+
+```{r}
+set.seed(123)
+
+x <- plotting_df$x.c
+
+y <- plotting_df$y.c
+
+z <- plotting_df$sf12mcs
+
+  
+z_pred = (b0 + (b1*x) + (b2*y) + (b3*(x**2)) + (b4*(x*y)) + (b5*(y**2)))
+
+df <- data.frame(x, y, z, z_pred)
+
+plot_ly(z = df, type = "surface") %>% 
+  add_trace(text = "Data point", name = "Data point", data = df, x = x, y = y, z = z, mode = "markers", type = "scatter3d", 
+            marker = list(size = 4, color = "red", symbol = 104)) %>%
+  add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d") %>%
+  layout(showlegend = FALSE, 
+         scene = list(
+           xaxis = list(title = "Vitality"),
+           yaxis = list(title = "Learning"),
+           zaxis = list(title = "Mental health"),
+           aspectratio = list(x=1, y=1, z=1)))
+
+```
+
 

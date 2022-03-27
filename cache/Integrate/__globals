@@ -1,9 +1,9 @@
 unnamed-chunk-2	
 unnamed-chunk-5	::	%>%	$	$<-	c	colnames	colnames<-	column_to_rownames	list	mgsub	read_excel	remove_rownames	rownames	rownames<-	sprintf	write.csv
-unnamed-chunk-6	%>%	<	>	~	$	c	F	fixef	list	lmer	lmerControl	plotRSA	quantile	read_excel	rglwidget	select	sf12pcs	subset	T	write.csv	x.c	y.c
-unnamed-chunk-7	$	apply	brewer_pal	c	colour_ramp	library	list	matrix	mean	plot_ly	read.ply	rescale	t
-unnamed-chunk-8	%>%	<	>	~	$	c	F	fixef	list	lmer	lmerControl	name_vars	plotRSA	quantile	read_excel	rglwidget	select	sf12mcs	subset	T	x.c	y.c
-unnamed-chunk-9	
+unnamed-chunk-6	%>%	~	c	F	fixef	lmer	lmerControl	read_excel	select	sf12pcs	write.csv	x.c	y.c
+unnamed-chunk-7	%>%	^	$	add_trace	b0	b1	b2	b3	b4	b5	data.frame	layout	library	list	plot_ly	plotting_df	set.seed
+unnamed-chunk-8	%>%	~	F	fixef	lmer	lmerControl	name_vars	read_excel	select	sf12mcs	x.c	y.c
+unnamed-chunk-9	%>%	^	$	add_trace	b0	b1	b2	b3	b4	b5	data.frame	layout	list	plot_ly	plotting_df	set.seed
 unnamed-chunk-10	::	@	%>%	as.character	c	cfa	compareFit	dataset	kable	kable_classic	list	matches	measEq.syntax	summary
 unnamed-chunk-11	%>%	$<-	c	matches	nrow	pivot_longer	sem	seq.int	summary
 unnamed-chunk-12	::	@	%>%	as.character	c	cfa	compareFit	dataset	kable	kable_classic	library	list	matches	measEq.syntax	names	reliability
