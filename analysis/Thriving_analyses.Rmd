@@ -115,8 +115,6 @@ rownames(corstar_select_onlineapp) <- gsub("_", " ", rownames(corstar_select_onl
 write.xlsx(corstar_select_onlineapp,"../output/corstar_select.xlsx", col.names = TRUE,
   row.names = TRUE)
 
-
-
 res2 <- rcorr(as.matrix(cor_tab))
 
 cat("Range of available data:",range(res2$n))
@@ -177,10 +175,6 @@ flat_cor <-flattenCorrMatrix(res2$r, res2$P)
 flat_cor$p <- round(flat_cor$p, 3)
 flat_cor[order(flat_cor$p),] 
 flat_cor %>% .[grep("sf12", .$column), ] %>% .[.$p <= 0.05, ]
-
-
-
-
 ```
 
 # Correlation table model variables
@@ -265,6 +259,8 @@ flat_cor <-flattenCorrMatrix(res2$r, res2$P)
 flat_cor$p <- round(flat_cor$p, 3)
 #flat_cor[order(flat_cor$p),] 
 ```
+
+
 
 # Discrepancy assessment
 
@@ -457,9 +453,9 @@ compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>
 ```{r}
 dataset$ID <- seq.int(nrow(dataset))
 
-longer <- dataset %>% 
+longer <- dataset %>%
  pivot_longer(matches("T2|T3|T4|T5"),
-    names_pattern = "(T._)(.*)", 
+    names_pattern = "(T._)(.*)",
    names_to = c( "set", ".value")
  )
 
@@ -468,141 +464,76 @@ model <- '
     level: 1
         vita_w  =~  vitality1 + vitality2 + vitality5
         learn_w =~ learn1 + learn2 + learn3
+        aut_w  =~  aut1 + aut2 + aut3
+        demands_w =~ demands1 + demands2 + demands3
+        csup_w =~ csup1 + csup2 + csup3 + csup4
+        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_w =~ na1 + na2 + na3 + na4 + na5
+
         phys_w  =~ sf12pcs
         ment_w  =~ sf12mcs
         sf12pcs ~~ 0*sf12pcs
         sf12mcs ~~ 0*sf12mcs
-    
+
 
     level: 2
         vita_b  =~  vitality1 + vitality2 + vitality5
         learn_b =~ learn1 + learn2 + learn3
+        aut_b  =~  aut1 + aut2 + aut3
+        demands_b =~ demands1 + demands2 + demands3
+        csup_b =~ csup1 + csup2 + csup3 + csup4
+        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_b =~ na1 + na2 + na3 + na4 + na5
+        
         phys_b  =~ sf12pcs
         ment_b  =~ sf12mcs
         sf12pcs ~~ 0*sf12pcs
         sf12mcs ~~ 0*sf12mcs
 '
 
+model_thriv <- '
+    level: 1
+        thriv_w =~ thriv1 + thriv2 + thriv3 + thriv4 + thriv5 + thriv6
+
+    level: 2
+        thriv_b =~ thriv1 + thriv2 + thriv3 + thriv4 + thriv5 + thriv6
+'
+
+
+
 fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
 summary(fit, fit.measures=TRUE)
+fit_thriv <- sem(model_thriv, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit, fit.measures=TRUE)
+
+rels_within_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2) %>%  gsub("0.", ".", .)
+
+rels_within <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2) %>% c(rels_within_thriv, .) %>% .[c(2, 3, 1, 4: 9)] %>%  gsub("0.", ".", .)
+
+rels_between_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) %>% gsub("0.", ".", .)
+
+rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) %>% c(rels_between_thriv, .)  %>% .[c(2, 3, 1, 4: 9)] %>% 
+  gsub("0.", ".", .)
+
+rels <- cbind(rels_within, rels_between) %>% rbind(., matrix(data="", ncol=2, nrow=6))
 
 ```
 
 # Measurement invariance
 
-```{r}
-library(semTools)
-names(dataset)
-model_configural <- '
-Vita_T1     =~ T2_vitality1 + T2_vitality2 + T2_vitality5
-Vita_T2     =~ T3_vitality1 + T3_vitality2 + T3_vitality5
-Vita_T3     =~ T4_vitality1 + T4_vitality2 + T4_vitality5
-Vita_T4     =~ T5_vitality1 + T5_vitality2 + T5_vitality5
-
-
-Learn_T1    =~ T2_learn1 + T2_learn2 + T2_learn3 
-Learn_T2    =~ T3_learn1 + T3_learn2 + T3_learn3 
-Learn_T3    =~ T4_learn1 + T4_learn2 + T4_learn3 
-Learn_T4    =~ T5_learn1 + T5_learn2 + T5_learn3 
-
-'
-
-
-longFacNames <- list(
-  VITA =     c("Vita_T1","Vita_T2","Vita_T3", "Vita_T4"),
-  LEARN =    c("Learn_T1","Learn_T2","Learn_T3", "Learn_T4"))
-
-
-syntax.config <- measEq.syntax(configural.model = model_configural,
-                               data = dataset,
-                               ID.fac = "std.lv",
-                               longFacNames = longFacNames,
-                               auto="all")
-
-mod.config <- as.character(syntax.config)   # save as text
-
-fit.config <- cfa(mod.config, 
-                  data = dataset, 
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-library(kableExtra)
-reliability(fit.config) %>%
-  kable(digits = 3) %>%
-  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
-
-
-syntax.metric <- measEq.syntax(configural.model = model_configural, 
-                               data = dataset,
-                               ID.fac = "std.lv", 
-                               longFacNames = longFacNames,
-                               group.equal = c("loadings"),
-                               long.equal  = c("loadings"),
-                               auto="all")
-
-mod.metric <- as.character(syntax.metric)   # save as text
-
-## fit model to data
-fit.metric <- cfa(mod.metric, 
-                  data = dataset,
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-syntax.strong <- measEq.syntax(configural.model = model_configural, 
-                               data = dataset,
-                               parameterization = "theta",
-                               ID.fac = "std.lv", 
-                               longFacNames = longFacNames,
-                               group.equal = c("loadings", "intercepts"),
-                               long.equal  = c("loadings", "intercepts"),
-                               auto="all")
-
-mod.strong<- as.character(syntax.strong)    # save as text
-
-## fit model to data
-fit.strong<- cfa(mod.strong, 
-                  data = dataset,
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-syntax.strict <- measEq.syntax(configural.model = model_configural, 
-                               data = dataset,
-                               ID.fac = "std.lv", 
-                               longFacNames = longFacNames,
-                               group.equal = c("loadings", "intercepts", "means"),
-                               long.equal  = c("loadings", "intercepts", "means"),
-                               auto="all")
-
-mod.strict<- as.character(syntax.strict)   # save as text
-
-## fit model to data
-fit.strict<- cfa(mod.strict, 
-                  data = dataset, 
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@nested %>%
-  kable(digits = 3) %>%
-  kable_classic(full_width=FALSE, html_font = "CMU Serif")
-
-
-compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>%
-  dplyr::select(matches("chisq|df|pvalue|cfi|tli|rmsea|srmr")) %>%
-  kable(digits = 3) %>%
-  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
-
-
-```
-
-
 ```{r eval = F}
+write.csv(dataset, "../../data/dataset.csv")
+
 ## Configural invariance (same model configuration across levels)
 
 # write.xlsx2(
@@ -791,6 +722,8 @@ longer_comp <- dataframe %>%
    names_to = c( "set", ".value")
  ) %>% mutate(set = (as.numeric(mgsub(.$set, c("T", "_"), c("", "")))) - 2)
 
+longer_comp_raw <- longer_comp
+
 ## We use the function to prepare the data; the Level-2 indicator is
 ## "ID"
 dat <- ddply(longer_comp,.var="ID",.fun=Center)
@@ -843,6 +776,65 @@ cat("ICC mental health:", compute_icc(m0_ment) %>%
   round(3))
 
 ```
+
+# Correlation table multilevel
+
+```{r}
+
+longer_comp_corr <- longer_comp_raw %>% 
+  select(ID, 
+         ends_with("vitality"), ends_with("learn"), ends_with("thriv"),
+         aut, demands, csup, ssup, pa, na,
+         ends_with("12pcs"),  ends_with("12mcs"),
+         T1_age:T1_edu, T1_tenure_org) 
+
+within_between <- statsBy(longer_comp_corr, "ID", cors = FALSE, method="pearson",  use="pairwise")
+
+print(within_between, short = FALSE)
+within <- within_between$rwg
+between <- within_between$rbg
+
+str(within_between)
+
+
+within_between$ci.wg$r.ci %>% arrange(., abs(r)) # all > 0.04 are sign at .05
+within_between$ci.bg$r.ci %>% arrange(., abs(r)) # all > 0.06 are sign at .05
+
+corstar_within <- as.matrix(corstars_no_stars(within, removeTriangle = "lower", result="none"))
+corstar_between <- as.matrix(corstars_no_stars(between, removeTriangle = "upper", result="none"))
+
+corstar_between[upper.tri(corstar_between)] <- corstar_within[upper.tri(corstar_within)]
+
+# ICC info
+ICC_1 <- sprintf("%.2f", round(within_between$ICC1[-1], 2))
+ICC_2 <- sprintf("%.2f", round(within_between$ICC2[-1], 2))
+ICC_1 <- gsub("0.", ".", ICC_1)
+ICC_1 <- gsub("0.", ".", ICC_2)
+ICC_12 <- cbind(ICC_1, ICC_2)
+```
+
+# Add reliabilities
+
+# Crate cortable with additional info 
+```{r}
+
+mean <- longer_comp_corr %>% colMeans(., na.rm = T) %>% round(.,2) %>% .[-1]
+sd <- cbind(apply(longer_comp_corr, 2, sd, na.rm = T)) %>% round(., 2) %>% .[-1]
+mean_sd <- cbind(mean,sd)
+
+corrs <- as.data.frame(corstar_between) %>% cbind(ICC_12, rels, .)
+corrs <- rbind(corrs, c("", "", "", "", mean), c("", "", "", "", sd))
+
+html_table <- corrs %>% add_rownames(.) %>% flextable(.)  %>% height(., height = .4) 
+ 
+html_table <- width(html_table, width = 0.4)
+doc <- read_docx() %>%
+   body_add_flextable(value = html_table, split = TRUE) %>%
+   body_end_section_landscape() %>% # a landscape section is ending here
+   print( target = "../output/my_table_corr.docx" )
+```
+
+
 
 ## Preparation lagged data frame
 
@@ -1012,6 +1004,9 @@ cat("R square conditional =" ,r.squaredGLMM(mphys_randomthriv)[1,2])
 r.squaredGLMM(mphys_randomthriv)
 check_collinearity(mphys_randomthriv, sort = T)
 
+std_coef_phys_thriv <- stdCoef.merMod(mphys_randomthriv)
+
+
 ```
 
 ### Physical health by vitality and learning with interaction and polynomial
@@ -1123,7 +1118,7 @@ cat("R square conditional =" ,r.squaredGLMM(mment_randomX_Y)[1,2])
 check_collinearity(mment_randomX_Y, sort = T)
 
 
-# Physical health by thriving
+# Mental health by thriving
 mment_randomthriv <- lmer(sf12mcs~1 +CWC_thriv+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + set +
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
@@ -1136,6 +1131,10 @@ cat("R square marginal =" ,r.squaredGLMM(mment_randomthriv)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mment_randomthriv)[1,2])
 r.squaredGLMM(mment_randomthriv)
 check_collinearity(mment_randomthriv, sort = T)
+
+std_coef_ment_thriv <- stdCoef.merMod(mment_randomthriv)
+
+
 ```
 
 ### Mental health by vitality and learning with interaction and polynomial
@@ -1151,7 +1150,7 @@ mment_randomX_Y <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
 
 tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE)
 
-std_coef_phys_XY <- stdCoef.merMod(mment_randomX_Y)
+std_coef_ment_XY <- stdCoef.merMod(mment_randomX_Y)
 
 cat("R square marginal =" ,r.squaredGLMM(mment_randomX_Y)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mment_randomX_Y)[1,2])

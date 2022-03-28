@@ -4,8 +4,8 @@ unnamed-chunk-6	%>%	~	c	F	fixef	lmer	lmerControl	read_excel	select	sf12pcs	write
 unnamed-chunk-7	%>%	^	$	add_trace	b0	b1	b2	b3	b4	b5	data.frame	layout	library	list	plot_ly	plotting_df	set.seed
 unnamed-chunk-8	%>%	~	F	fixef	lmer	lmerControl	name_vars	read_excel	select	sf12mcs	x.c	y.c
 unnamed-chunk-9	%>%	^	$	add_trace	b0	b1	b2	b3	b4	b5	data.frame	layout	list	plot_ly	plotting_df	set.seed
-unnamed-chunk-10	::	@	%>%	as.character	c	cfa	compareFit	dataset	kable	kable_classic	list	matches	measEq.syntax	summary
-unnamed-chunk-11	%>%	$<-	c	matches	nrow	pivot_longer	sem	seq.int	summary
+unnamed-chunk-10	::	:=	.	@	%>%	~	$	$<-	as.character	as.data.frame	c	cbind	cfa	cfi	chisq	colnames<-	compareFit	data.table	diff_cfi	diff_chisq	diff_df	diff_rmsea	diff_srmr	diff_tli	funs	gsub	is.numeric	library	list	map_df	matches	measEq.syntax	mutate_if	paste	pvalue	read_csv	require	rmsea	round	select	shift	sprintf	srmr	tli
+unnamed-chunk-11	
 unnamed-chunk-12	::	@	%>%	as.character	c	cfa	compareFit	dataset	kable	kable_classic	library	list	matches	measEq.syntax	names	reliability
 unnamed-chunk-13	anova	c	cfa	compareFit	lavInspect	longer	parameterEstimates	reliability	summary
 unnamed-chunk-14	::	.	[<-	%>%	~	$	$<-	as.data.frame	as.numeric	aut	c	cat	cbind	center	Center	colnames	colnames<-	comp_df	compute_icc	csup	ddply	demands	do.call	drop_na	F	full_join	funs	group_by	ID	is.nan	lapply	learn	lmer	matches	mean	mgsub	mutate	na	names	names<-	nrow	pa	paste0	pivot_longer	round	seq.int	set	sf12mcs	sf12pcs	ssup	summarise_at	T	T1_age	T1_edu	T1_sex	T1_tenure_org	thriv	vars	vitality	x.c	y.c
