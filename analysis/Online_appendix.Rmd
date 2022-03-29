@@ -19,7 +19,7 @@ options(rgl.useNULL = TRUE) # Suppress the separate window.
 library(rgl)
 ```
 
-# Multilevel Polynomial Regression Analysis 
+# Multilevel polynomial regression analysis 
 
 Multilevel polynomial regression analysis [MPRA; see @Nestler2019] is an adaptation of polynomial regression analysis [PRA; see @Edwards.1993a] that can be used when data have a multilevel structure (e.g., observations across multiple time points nested within participants). In the current study, MPRA allows testing and interpreting both the linear effects of vitality and learning separately, as well as the effects of congruent vitality and learning scores using data collected at four time points with a one-month time lag between the assessments. In the following, we use the index m to denote the Level 2 unit ($m = 1…N$) and the index $i$ to denote the Level 1 unit ($i = 1, 2, …, n_{m}$). To assess the existence of congruence effects, the following parameters are estimated at the population level: the slope of the line of congruence (LOC) (i.e., vitality = learning) as related to the outcome variable is given by $\alpha_{1m} = b_{1} + b_{2}$.  Here, $b_{1}$ is the unstandardized regression coefficient for the (latent) vitality variable and $b_2$ is the regression coefﬁcient for the (latent) learning variable. The curvature along the line of perfect agreement is specified by $\alpha_{1m} = b_{3} + b_{4} + b_{5}$. Here, $b_{3}$ is the regression coefﬁcient for (latent) vitality squared, b4 is the regression coefﬁcient for the cross-product of the (latent) vitality and the (latent) learning variable, and b5 is the unstandardized regression coefﬁcient for latent learning squared. The slope of the line of incongruence (LOIC) is defined as $\alpha_{3m} = b_{1} - b_{2}$. The curvature of the line of incongruent vitality and learning levels as related to the outcome variable is specified as $\alpha_{4m} = b_{3} - b_{4} + b_{5}$. Each of the regression coefficients $b_{1}$ to $b_{5}$ includes a fixed effect and Level 2 residual terms. The fixed effects of the regression coefficients are used to estimate the average response surface parameters $\hat{\alpha}_{1}$ to $\hat{\alpha}_{5}$ [@Nestler2019]. \
 
@@ -199,13 +199,20 @@ plot_ly(z = df, type = "surface") %>%
 
 ```
 
-# Multilevel lagged analysis results
+
+$~$
+
+$~$
+
+
+
+# Multilevel lagged analyses
 
 ## Measurement invariance
 
 Model fit statistics for the test of measurement invariance for vitality and learning across T1 to T4
 
-```{r}
+```{r echo = FALSE}
 dataset <- read_csv("../../data/dataset.csv")
 
 library(semTools)
@@ -338,7 +345,91 @@ knitr::kable(fit_table, caption = "N = 1,064. CFI = comparative fit index; TLI =
 
 ```
 
-```{r}
+
+$~$
+
+## Lagged effects multilevel models
+
+Lagged multilevel models including the effects of predictors measured at t-1 on health measured at t
+
+### Physical health
+
+```{r echo = FALSE}
+longer_comp_l <- read_csv("../../data/longer_comp_l.csv")
+
+mphys_random_thriv_lagged<- lmer(Physical.health ~1 +Thriving+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.thriving +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure +
+                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+mphys_randomX_Y_lagged<- lmer(Physical.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure +
+                        (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+tab2 <- tab_model(c(mphys_random_thriv_lagged, mphys_randomX_Y_lagged), show.ci = FALSE, show.se = TRUE, digits.re = 3, show.std = TRUE, 
+                  title = "Model 1:Physical health predicted by thriving and control variables; Model 2: Physical health predicted by learning and vitality linear, interaction, and squared terms and control variables.", string.est = "b",string.se = "SE",  string.std = "beta",
+                  order.terms = c(1, 21:25, 2:9, 26:30, 10:20), 
+                   string.std_se = "SE beta", dv.labels = c("Model 1", "Model 2"))
+
+
+tab2
 
 ```
+
+$~$
+
+### Mental health
+
+```{r echo = FALSE}
+mment_random_thriv_lagged<- lmer(Mental.health ~1 +Thriving+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.thriving +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure +
+                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+mment_randomX_Y_lagged<- lmer(Mental.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure +
+                        (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+tab2 <- tab_model(c(mment_random_thriv_lagged, mment_randomX_Y_lagged), show.ci = FALSE, show.se = TRUE, digits.re = 3, show.std = TRUE, 
+                  title = "Model 1:Mental health predicted by thriving and control variables; Model 2: Mental health predicted by learning and vitality linear, interaction, and squared terms and control variables.", string.est = "b",string.se = "SE",  string.std = "beta",
+                  order.terms = c(1, 21:25, 2:9, 26:30, 10:20), 
+                   string.std_se = "SE beta", dv.labels = c("Model 1", "Model 2"))
+
+```
+
+```{r}
+mment_random_thriv_lagged<- lmer(Mental.health ~1 +lag1.Thriving+
+                        lag1.Positive.affect+ lag1.Negative.affect + lag1.Demands+ lag1.Autonomy + 
+                        lag1.Coworker.support + lag1.Supervisor.support + lag1.Time + 
+                          Mean.thriving +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure +
+                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+```
+
+
+
 

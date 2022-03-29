@@ -905,6 +905,46 @@ cat("ICC physical health:", compute_icc(m0_phys) %>%
 
 cat("ICC mental health:", compute_icc(m0_ment) %>%
   round(3))
+
+
+longer_comp_l <- longer_comp_l %>% 
+  dplyr::rename(., 
+                Vitality = x.c,
+                Learning = y.c,
+                "Vitality.squared" = x2.c,
+                "Vitality.x.learning" = xy.c,
+                "Learning.squared" = y2.c,
+                "Positive.affect" = CWC_pa,
+                "Negative.affect" = CWC_na,
+                "Demands" = CWC_demands,
+                "Mean.vitality" = x.mean,
+                "Mental.health" = sf12mcs,
+                "Physical.health" = sf12pcs,
+                Thriving = thriv.c,
+                "Mean.learning" = y.mean,
+                "Mean.vitality.squared" = x2.mean,
+                "Mean.learning.squared" = y2.mean,
+                "Autonomy" = CWC_aut,
+                "Coworker.support" = CWC_csup,
+                "Supervisor.support" = CWC_ssup,
+                "Time" = set,
+                "Person.ID" = ID,
+                "Age" = GMC_T1_age,
+                "Gender" = GMC_T1_sex,
+                "Education" = GMC_T1_edu,
+                "Organizational.tenure" = GMC_T1_tenure_org,
+                "Mean.negative.affect" = na.mean,
+                "Mean.positive.affect" = pa.mean,
+                "Mean.thriving" = thriv_mean,
+                "Mean.demands" = demands.mean,
+                "Mean.autonomy" = aut.mean,
+                "Mean.coworker.support" = csup.mean,
+                "Mean.supervisor.support" = ssup.mean,
+                "Mean.vitality.x.learning" = xy.mean)
+
+longer_comp_l <- longer_comp_l %>% select(-learn, -vitality, -thriv.mean, -CWC_sf12pcs, -CWC_sf12mcs, -CWC_thriv, -CWC_vitality, -CWC_learn, -ID.mean, -sf12pcs.mean, -vitality.mean, -sf12mcs.mean, -learn.mean)
+
+longer_comp_l
 ```
 
 
@@ -998,7 +1038,7 @@ mphys_randomthriv <- lmer(sf12pcs~1 +CWC_thriv+
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
                         (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mphys_randomthriv)
-tab_model(mphys_randomthriv, show.ci = FALSE, show.se = TRUE)
+tab_model(mphys_randomthriv, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 cat("R square marginal =" ,r.squaredGLMM(mphys_randomthriv)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mphys_randomthriv)[1,2])
 r.squaredGLMM(mphys_randomthriv)
@@ -1018,18 +1058,18 @@ mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
                         x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+                        (1+x.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 summary(mphys_randomX_Y)
 
-tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
+tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 
 std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
 
 cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
 
-MLRSA_AverageSurface(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c","y.c",NA,NA,NA)) 
+MLRSA_AverageSurface(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c",NA,NA,NA,NA)) 
 check_collinearity(mphys_randomX_Y, sort = T)
 
 # PLOT THE ESTIMATED MODEL
@@ -1075,27 +1115,26 @@ plot
 dev.off()
 ```
 
-#### Without random slopes
+#### Lagged
 
 ```{r}
-mphys_randomX_Y_noslope<- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
-                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
-                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
-                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+write.csv(longer_comp_l, "../../data/longer_comp_l.csv")
+names(longer_comp_l)
+mphys_randomX_Y_lagged<- lmer(Physical.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure +
+                        (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+summary(mphys_randomX_Y_lagged)
+
+tab_model(mphys_randomX_Y_lagged, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 
 
-mphys_randomX_Y_noslope_l<- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
-                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
-                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
-                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1|ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
-
-tab_model(mphys_randomX_Y)
-tab_model(mphys_randomX_Y_noslope)
-tab_model(mphys_randomX_Y_noslope_l)
 ```
 
 ### Mental health by vitality and learning, and thriving, without interaction and polynomial
@@ -1108,7 +1147,7 @@ mment_randomX_Y <- lmer(sf12mcs ~1 +CWC_vitality+ CWC_learn +
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
                         (1+CWC_vitality + CWC_learn|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mment_randomX_Y)
-tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE)
+tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 
 std_coef_phys_XY <- stdCoef.merMod(mment_randomX_Y)
 
@@ -1126,7 +1165,7 @@ mment_randomthriv <- lmer(sf12mcs~1 +CWC_thriv+
                         (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mment_randomthriv)
 
-tab_model(mment_randomthriv, show.ci = FALSE, show.se = TRUE)
+tab_model(mment_randomthriv, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 cat("R square marginal =" ,r.squaredGLMM(mment_randomthriv)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mment_randomthriv)[1,2])
 r.squaredGLMM(mment_randomthriv)
@@ -1145,8 +1184,8 @@ mment_randomX_Y <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
                         x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
-
+                        (1+x.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+summary(mment_randomX_Y)
 
 tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE)
 
@@ -1155,7 +1194,7 @@ std_coef_ment_XY <- stdCoef.merMod(mment_randomX_Y)
 cat("R square marginal =" ,r.squaredGLMM(mment_randomX_Y)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mment_randomX_Y)[1,2])
 
-MLRSA_AverageSurface(mment_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c","y.c",NA,NA,NA)) 
+MLRSA_AverageSurface(mment_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c",NA,NA,NA,NA)) 
 check_collinearity(mment_randomX_Y, sort = T)
 
 # PLOT THE ESTIMATED MODEL
