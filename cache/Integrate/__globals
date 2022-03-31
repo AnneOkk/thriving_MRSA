@@ -2,12 +2,12 @@ unnamed-chunk-2
 unnamed-chunk-3	
 setup	::	$	library	options
 unnamed-chunk-5	::	%>%	$	$<-	c	colnames	colnames<-	column_to_rownames	list	mgsub	read_excel	remove_rownames	rownames	rownames<-	sprintf	write.csv
-unnamed-chunk-6	%>%	~	c	F	fixef	lmer	lmerControl	read_excel	select	sf12pcs	write.csv	x.c	y.c
+unnamed-chunk-6	%>%	~	c	CWC_x	CWC_y	F	fixef	lmer	lmerControl	read_csv	select	sf12pcs	write.csv
 unnamed-chunk-7	%>%	^	$	add_trace	b0	b1	b2	b3	b4	b5	data.frame	layout	library	list	plot_ly	plotting_df	set.seed
-unnamed-chunk-8	%>%	~	F	fixef	lmer	lmerControl	name_vars	read_excel	select	sf12mcs	x.c	y.c
+unnamed-chunk-8	%>%	~	CWC_x	CWC_y	F	fixef	lmer	lmerControl	longer_comp	name_vars	select	sf12mcs
 unnamed-chunk-9	%>%	^	$	add_trace	b0	b1	b2	b3	b4	b5	data.frame	layout	list	plot_ly	plotting_df	set.seed
 unnamed-chunk-10	::	:=	.	@	%>%	~	$	$<-	as.character	as.data.frame	c	cbind	cfa	cfi	chisq	colnames<-	compareFit	data.table	diff_cfi	diff_chisq	diff_df	diff_rmsea	diff_srmr	diff_tli	funs	gsub	is.numeric	kable_styling	library	list	map_df	matches	measEq.syntax	mutate_if	paste	pvalue	read_csv	require	rmsea	round	select	shift	sprintf	srmr	tli
 unnamed-chunk-11	~	c	F	lmer	lmerControl	read_csv	tab_model
-unnamed-chunk-12	~	c	F	lmer	lmerControl	longer_comp_l	tab_model
+unnamed-chunk-12	~	c	F	lmer	lmerControl	read_csv	tab_model
 unnamed-chunk-13	~	F	lmer	lmerControl	longer_comp_l	mphys_random_thriv_lagged	tab_model
 unnamed-chunk-14	~	F	lmer	lmerControl	longer_comp_l	mphys_randomX_Y_lagged	tab_model

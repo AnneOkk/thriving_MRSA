@@ -211,18 +211,18 @@ lavaan_sem <- function(IV, mediator, DV, controls = F) {
 
 
 # center x and y variables in polynomial regression analysis on their grand mean
-Center <- function(longer_comp) {
+make_polys <- function(longer_comp) {
 
   # center x and y on grand mean across both variables
   grand.M <- mean( c(longer_comp$vitality, longer_comp$learn), na.rm = TRUE )
-  longer_comp$x.c <- longer_comp$vitality-grand.M
-  longer_comp$y.c <- longer_comp$learn-grand.M
+  longer_comp$x <- longer_comp$vitality-grand.M
+  longer_comp$y <- longer_comp$learn-grand.M
 
 
   # compute higher order terms based on the centered predictors
-  longer_comp$x2.c <- longer_comp$x.c^2
-  longer_comp$xy.c <- longer_comp$x.c*longer_comp$y.c
-  longer_comp$y2.c <- longer_comp$y.c^2
+  longer_comp$x2 <- longer_comp$x^2
+  longer_comp$xy <- longer_comp$x*longer_comp$y
+  longer_comp$y2 <- longer_comp$y^2
 
   # save means and compute their higher order terms
   longer_comp$x.mean  <- mean( longer_comp$vitality, na.rm = TRUE )

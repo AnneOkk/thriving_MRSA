@@ -448,7 +448,7 @@ compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>
 ```
 
 
-# Multilevel CFA
+# Multilevel CFA + Reliabilities
 
 ```{r}
 dataset$ID <- seq.int(nrow(dataset))
@@ -470,13 +470,12 @@ model <- '
         ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
         pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
         na_w =~ na1 + na2 + na3 + na4 + na5
-
         phys_w  =~ sf12pcs
         ment_w  =~ sf12mcs
         sf12pcs ~~ 0*sf12pcs
         sf12mcs ~~ 0*sf12mcs
 
-
+        
     level: 2
         vita_b  =~  vitality1 + vitality2 + vitality5
         learn_b =~ learn1 + learn2 + learn3
@@ -486,11 +485,11 @@ model <- '
         ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
         pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
         na_b =~ na1 + na2 + na3 + na4 + na5
-        
         phys_b  =~ sf12pcs
         ment_b  =~ sf12mcs
         sf12pcs ~~ 0*sf12pcs
         sf12mcs ~~ 0*sf12mcs
+        
 '
 
 model_thriv <- '
@@ -506,7 +505,6 @@ model_thriv <- '
 fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
 summary(fit, fit.measures=TRUE)
 fit_thriv <- sem(model_thriv, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
-summary(fit, fit.measures=TRUE)
 
 rels_within_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
   return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
@@ -527,7 +525,103 @@ rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", 
 
 rels <- cbind(rels_within, rels_between) %>% rbind(., matrix(data="", ncol=2, nrow=6))
 
+#modificationindices(fit, sort = T)
 ```
+
+## CFA vit + learn
+
+```{r}
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
+        aut_w  =~  aut1 + aut2 + aut3
+        demands_w =~ demands1 + demands2 + demands3
+        csup_w =~ csup1 + csup2 + csup3 + csup4
+        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_w =~ na1 + na2 + na3 + na4 + na5
+
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+
+
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
+        aut_b  =~  aut1 + aut2 + aut3
+        demands_b =~ demands1 + demands2 + demands3
+        csup_b =~ csup1 + csup2 + csup3 + csup4
+        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_b =~ na1 + na2 + na3 + na4 + na5
+        
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+'
+
+
+
+fit2 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit2, fit.measures=TRUE)
+```
+
+## CFA vit + pa
+
+```{r}
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + pa1 + pa2 + pa3 + pa4 + pa5
+        learn_w =~ learn1 + learn2 + learn3
+        aut_w  =~  aut1 + aut2 + aut3
+        demands_w =~ demands1 + demands2 + demands3
+        csup_w =~ csup1 + csup2 + csup3 + csup4
+        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
+        na_w =~ na1 + na2 + na3 + na4 + na5
+
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+
+
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + pa1 + pa2 + pa3 + pa4 + pa5
+        learn_b =~ learn1 + learn2 + learn3
+        aut_b  =~  aut1 + aut2 + aut3
+        demands_b =~ demands1 + demands2 + demands3
+        csup_b =~ csup1 + csup2 + csup3 + csup4
+        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
+        na_b =~ na1 + na2 + na3 + na4 + na5
+        
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+'
+
+
+
+fit3 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit3, fit.measures=TRUE)
+```
+
+
+```{r}
+library(tab_model)
+summary(fit)
+
+fits <- compareFit(fit, fit2)
+summary(fits)
+
+fits2 <- compareFit(fit, fit3)
+summary(fits2)
+```
+
+
+
 
 # Measurement invariance
 
@@ -705,6 +799,87 @@ summary(compareFit(fit.ml.config, fit.ml.metric, fit.ml.scalar), fit.measures = 
 reliability(fit.ml.config, return.total = TRUE)
 ```
 
+# Multilevel CFA reduced 
+
+```{r}
+dataset$ID <- seq.int(nrow(dataset))
+
+longer <- dataset %>%
+ pivot_longer(matches("T2|T3|T4|T5"),
+    names_pattern = "(T._)(.*)",
+   names_to = c( "set", ".value")
+ )
+
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5
+        learn_w =~ learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5
+        learn_b =~ learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+        
+'
+
+fit1 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit1, fit.measures=TRUE)
+```
+
+```{r}
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        ment_w  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        ment_b  =~ sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+        
+'
+
+fit2 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit2, fit.measures=TRUE)
+```
+
+```{r}
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + sf12mcs
+        learn_w =~ learn1 + learn2 + learn3
+        phys_w  =~ sf12pcs
+        sf12pcs ~~ 0*sf12pcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + sf12mcs
+        learn_b =~ learn1 + learn2 + learn3
+        phys_b  =~ sf12pcs
+        sf12pcs ~~ 0*sf12pcs
+        
+'
+
+fit3 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit3, fit.measures=TRUE)
+```
+
 # Multilevel regression analyses
 
 ## Preparation
@@ -722,46 +897,48 @@ longer_comp <- dataframe %>%
    names_to = c( "set", ".value")
  ) %>% mutate(set = (as.numeric(mgsub(.$set, c("T", "_"), c("", "")))) - 2)
 
+# save raw data for later use to make lagged df and corr table
 longer_comp_raw <- longer_comp
 
-## We use the function to prepare the data; the Level-2 indicator is
-## "ID"
-dat <- ddply(longer_comp,.var="ID",.fun=Center)
-is.nan.data.frame <- function(x)
-do.call(cbind, lapply(x, is.nan))
-dat[is.nan(dat)] <- NA
+## Create polynomial terms
+dat <- make_polys(longer_comp) %>% select(matches("^x|^y|.mean$", ignore.case = F)) %>% drop_na(x, y) 
 
 # create thriving centered and thriving mean for use in multilevel RSA
-dat$thriv.c <- (dat$x.c + dat$y.c)/2
+dat$thriv <- (dat$x + dat$y)/2
 dat$thriv.mean <- (dat$x.mean + dat$y.mean)/2
 
-dat <- dat %>% drop_na(x.c, y.c, thriv, sf12mcs, sf12pcs) %>% dplyr::select(matches("x.c|y.c|xy.c|x2.c|y2.c|thriv.c|.mean|sf12mcs|sf12pcs|vita|learn", ignore.case = F))
-
-longer_comp <- longer_comp %>% drop_na(vitality, learn, sf12mcs, sf12pcs) %>% dplyr::select(where(is.numeric))
+# select variables from full df
+longer_comp <- longer_comp %>% drop_na(vitality, learn) %>% dplyr::select(where(is.numeric))
 
 # create aggregate_df for calculating means 
 aggregate_df <- longer_comp %>%
   group_by(ID) %>%
-  summarise_at(vars(-set), funs(mean(., na.rm=TRUE))) %>% dplyr::select(ID, na, pa, thriv, demands, aut, csup, ssup, sf12pcs, sf12mcs, vitality, learn)
-
+  summarise_at(vars(-set), funs(mean(., na.rm=TRUE))) %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, vitality, learn)
 names(aggregate_df) <- paste0(names(aggregate_df), ".mean")
-aggregate_df$ID <- aggregate_df$ID.mean
-colnames(aggregate_df)[4] <- "thriv_mean"
+aggregate_df <- aggregate_df %>% dplyr::rename("ID" = "ID.mean")
+aggregate_df$vitality2.mean <- aggregate_df$vitality.mean^2
+aggregate_df$learn2.mean <- aggregate_df$learn.mean^2
+aggregate_df$vitalitylearn.mean <- aggregate_df$vitality.mean*aggregate_df$learn.mean
+aggregate_df$thriv.mean <- (aggregate_df$learn.mean + aggregate_df$vitality.mean)/2
 
 # grand mean center static variables for use in multilevel model
 gmc_df <- longer_comp %>% dplyr::select(T1_age, T1_sex, T1_edu, T1_tenure_org)
 gmc_df[] <- lapply(gmc_df, function(x) center(x, type = "CGM", check = T))
 names(gmc_df) <- paste0("GMC_", names(gmc_df))
 
+# df with the two outcome variables and time
+health <- longer_comp %>% select(sf12pcs, sf12mcs, set)
+
 # group mean center change variables for use in multilevel model
-cwc_df <- longer_comp %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, thriv, vitality, learn, set)
+cwc_df <- longer_comp %>% select(ID, aut, csup, ssup, demands, na, pa) %>% cbind(., dat) %>% select(-matches(".mean"))
 cwc_df <- as.data.frame(lapply(cwc_df[-1], center, type = "CWC", cluster = cwc_df$ID))
 names(cwc_df) <- paste0("CWC_", names(cwc_df))
 cwc_df$set <- cwc_df$CWC_set
 cwc_df$ID <- longer_comp$ID
 
+longer_comp <- cbind(cwc_df, gmc_df, health)
+
 # make one dataframe that contains mean values, and centered variables
-longer_comp <- cbind(dat, cwc_df, gmc_df)
 longer_comp <- full_join(longer_comp, aggregate_df, by = "ID")
 
 # estimating the null model using lme4
@@ -774,6 +951,8 @@ cat("ICC physical health:", compute_icc(m0_phys) %>%
 
 cat("ICC mental health:", compute_icc(m0_ment) %>%
   round(3))
+
+write.csv(longer_comp, "../../data/longer_comp.csv")
 
 ```
 
@@ -825,7 +1004,7 @@ mean_sd <- cbind(mean,sd)
 corrs <- as.data.frame(corstar_between) %>% cbind(ICC_12, rels, .)
 corrs <- rbind(corrs, c("", "", "", "", mean), c("", "", "", "", sd))
 
-html_table <- corrs %>% add_rownames(.) %>% flextable(.)  %>% height(., height = .4) 
+html_table <- corrs %>% tibble::rownames_to_column(.) %>% flextable(.)  %>% height(., height = .4) 
  
 html_table <- width(html_table, width = 0.4)
 doc <- read_docx() %>%
@@ -844,6 +1023,16 @@ dataframe_l <- comp_df
 # assign ID variable
 dataframe_l$ID <- seq.int(nrow(dataframe))
 
+dataframe_l$T2_newsf12mcs <- dataframe_l$T2_sf12mcs
+dataframe_l$T3_newsf12mcs <- dataframe_l$T3_sf12mcs
+dataframe_l$T4_newsf12mcs <- dataframe_l$T4_sf12mcs
+dataframe_l$T5_newsf12mcs <- dataframe_l$T5_sf12mcs
+dataframe_l$T2_newsf12pcs <- dataframe_l$T2_sf12pcs
+dataframe_l$T3_newsf12pcs <- dataframe_l$T3_sf12pcs
+dataframe_l$T4_newsf12pcs <- dataframe_l$T4_sf12pcs
+dataframe_l$T5_newsf12pcs <- dataframe_l$T5_sf12pcs
+
+
 names(dataframe_l) <-  reduce2(c('T2_sf', 'T3_sf', 'T4_sf', 'T5_sf'), c('T1_sf', 'T2_sf', 'T3_sf', 'T4_sf'),  .init = names(dataframe_l), str_replace)
 
 dataframe_l <- select(dataframe_l, -matches("T5_|T1_sf"))
@@ -855,44 +1044,46 @@ longer_comp_l <- dataframe_l %>%
    names_to = c( "set", ".value")
  ) %>% mutate(set = (as.numeric(mgsub(.$set, c("T", "_"), c("", "")))) - 2)
 
-## We use the function to prepare the data; the Level-2 indicator is
-## "ID"
-dat <- ddply(longer_comp_l,.var="ID",.fun=Center)
-is.nan.data.frame <- function(x)
-do.call(cbind, lapply(x, is.nan))
-dat[is.nan(dat)] <- NA
+## Create polynomial terms
+dat <- make_polys(longer_comp_l) %>% select(matches("^x|^y|.mean$", ignore.case = F)) %>% drop_na(x, y) 
 
 # create thriving centered and thriving mean for use in multilevel RSA
-dat$thriv.c <- (dat$x.c + dat$y.c)/2
+dat$thriv <- (dat$x + dat$y)/2
 dat$thriv.mean <- (dat$x.mean + dat$y.mean)/2
 
-dat <- dat %>% drop_na(x.c, y.c, thriv, sf12mcs, sf12pcs) %>% dplyr::select(matches("x.c|y.c|xy.c|x2.c|y2.c|thriv.c|.mean|sf12mcs|sf12pcs|vita|learn", ignore.case = F))
-
-longer_comp_l <- longer_comp_l %>% drop_na(vitality, learn, sf12mcs, sf12pcs)  %>% dplyr::select(where(is.numeric))
+# select variables from full df
+longer_comp_l <- longer_comp_l %>% drop_na(vitality, learn) %>% dplyr::select(where(is.numeric))
 
 # create aggregate_df for calculating means 
 aggregate_df <- longer_comp_l %>%
-  group_by(ID) %>%
-  summarise_at(vars(-set), funs(mean(., na.rm=TRUE))) %>% dplyr::select(ID, na, pa, thriv, demands, aut, csup, ssup, sf12pcs, sf12mcs, vitality, learn)
-
+    group_by(ID) %>%
+    summarise_at(vars(-set), funs(mean(., na.rm=TRUE))) %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, vitality, learn)
 names(aggregate_df) <- paste0(names(aggregate_df), ".mean")
-aggregate_df$ID <- aggregate_df$ID.mean
-colnames(aggregate_df)[4] <- "thriv_mean"
+aggregate_df <- aggregate_df %>% dplyr::rename("ID" = "ID.mean")
+aggregate_df$vitality2.mean <- aggregate_df$vitality.mean^2
+aggregate_df$learn2.mean <- aggregate_df$learn.mean^2
+aggregate_df$vitalitylearn.mean <- aggregate_df$vitality.mean*aggregate_df$learn.mean
+aggregate_df$thriv.mean <- (aggregate_df$learn.mean + aggregate_df$vitality.mean)/2
 
 # grand mean center static variables for use in multilevel model
 gmc_df <- longer_comp_l %>% dplyr::select(T1_age, T1_sex, T1_edu, T1_tenure_org)
 gmc_df[] <- lapply(gmc_df, function(x) center(x, type = "CGM", check = T))
 names(gmc_df) <- paste0("GMC_", names(gmc_df))
 
+
+# df with the two outcome variables and time
+health <- longer_comp_l %>% select(sf12pcs, sf12mcs, set)
+
 # group mean center change variables for use in multilevel model
-cwc_df <- longer_comp_l %>% dplyr::select(ID, na, pa, demands, aut, csup, ssup, sf12pcs, sf12mcs, thriv, vitality, learn, set)
+cwc_df <- longer_comp_l %>% select(ID, aut, csup, ssup, demands, na, pa, newsf12mcs, newsf12pcs) %>% cbind(., dat) %>% select(-matches(".mean"))
 cwc_df <- as.data.frame(lapply(cwc_df[-1], center, type = "CWC", cluster = cwc_df$ID))
 names(cwc_df) <- paste0("CWC_", names(cwc_df))
 cwc_df$set <- cwc_df$CWC_set
 cwc_df$ID <- longer_comp_l$ID
 
+longer_comp_l <- cbind(cwc_df, gmc_df, health)
+
 # make one dataframe that contains mean values, and centered variables
-longer_comp_l <- cbind(dat, cwc_df, gmc_df)
 longer_comp_l <- full_join(longer_comp_l, aggregate_df, by = "ID")
 
 # estimating the null model using lme4
@@ -909,21 +1100,21 @@ cat("ICC mental health:", compute_icc(m0_ment) %>%
 
 longer_comp_l <- longer_comp_l %>% 
   dplyr::rename(., 
-                Vitality = x.c,
-                Learning = y.c,
-                "Vitality.squared" = x2.c,
-                "Vitality.x.learning" = xy.c,
-                "Learning.squared" = y2.c,
+                Vitality = CWC_x,
+                Learning = CWC_y,
+                "Vitality.squared" = CWC_x2,
+                "Vitality.x.learning" = CWC_xy,
+                "Learning.squared" = CWC_y2,
                 "Positive.affect" = CWC_pa,
                 "Negative.affect" = CWC_na,
                 "Demands" = CWC_demands,
-                "Mean.vitality" = x.mean,
+                "Mean.vitality" = vitality.mean,
                 "Mental.health" = sf12mcs,
                 "Physical.health" = sf12pcs,
-                Thriving = thriv.c,
-                "Mean.learning" = y.mean,
-                "Mean.vitality.squared" = x2.mean,
-                "Mean.learning.squared" = y2.mean,
+                Thriving = CWC_thriv,
+                "Mean.learning" = learn.mean,
+                "Mean.vitality.squared" = vitality2.mean,
+                "Mean.learning.squared" = learn2.mean,
                 "Autonomy" = CWC_aut,
                 "Coworker.support" = CWC_csup,
                 "Supervisor.support" = CWC_ssup,
@@ -935,16 +1126,16 @@ longer_comp_l <- longer_comp_l %>%
                 "Organizational.tenure" = GMC_T1_tenure_org,
                 "Mean.negative.affect" = na.mean,
                 "Mean.positive.affect" = pa.mean,
-                "Mean.thriving" = thriv_mean,
+                "Mean.thriving" = thriv.mean,
                 "Mean.demands" = demands.mean,
                 "Mean.autonomy" = aut.mean,
                 "Mean.coworker.support" = csup.mean,
                 "Mean.supervisor.support" = ssup.mean,
-                "Mean.vitality.x.learning" = xy.mean)
+                "Mean.vitality.x.learning" = vitalitylearn.mean,
+                "T-1.Physical.health" = CWC_newsf12pcs,
+                "T-1.Mental.health" = CWC_newsf12mcs)
 
-longer_comp_l <- longer_comp_l %>% select(-learn, -vitality, -thriv.mean, -CWC_sf12pcs, -CWC_sf12mcs, -CWC_thriv, -CWC_vitality, -CWC_learn, -ID.mean, -sf12pcs.mean, -vitality.mean, -sf12mcs.mean, -learn.mean)
-
-longer_comp_l
+write.csv(longer_comp_l, "../../data/longer_comp_l.csv")
 ```
 
 
@@ -1013,28 +1204,14 @@ summary(fit1, fit.measures=TRUE)
 
 ## RSA
 
-### Physical health by vitality and learning, and thriving, without interaction and polynomial
+### Physical health by thriving
 
 ```{r}
-mphys_randomX_Y <- lmer(sf12pcs ~1 +CWC_vitality+ CWC_learn +
-                        vitality.mean + learn.mean +
-                        (1+CWC_vitality |ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
-summary(mphys_randomX_Y)
-tab_model(mphys_randomX_Y, show.ci = FALSE, show.se = TRUE)
-
-std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
-
-cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
-cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
-
-check_collinearity(mphys_randomX_Y, sort = T)
-
-
 # Physical health by thriving
 mphys_randomthriv <- lmer(sf12pcs~1 +CWC_thriv+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + set +
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        thriv_mean + 
+                        thriv.mean + 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
                         (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mphys_randomthriv)
@@ -1053,12 +1230,12 @@ std_coef_phys_thriv <- stdCoef.merMod(mphys_randomthriv)
 
 ```{r}
 
-mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+mphys_randomX_Y <- lmer(sf12pcs ~1 +CWC_x+CWC_y+CWC_x2+CWC_xy+CWC_y2+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        vitality.mean+learn.mean+vitality2.mean+vitalitylearn.mean+learn2.mean+ 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+x.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+                        (1+CWC_x|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 summary(mphys_randomX_Y)
 
@@ -1069,23 +1246,23 @@ std_coef_phys_XY <- stdCoef.merMod(mphys_randomX_Y)
 cat("R square marginal =" ,r.squaredGLMM(mphys_randomX_Y)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mphys_randomX_Y)[1,2])
 
-MLRSA_AverageSurface(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c",NA,NA,NA,NA)) 
+MLRSA_AverageSurface(mphys_randomX_Y,name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2"),random_vars=c("CWC_x",NA,NA,NA,NA)) 
 check_collinearity(mphys_randomX_Y, sort = T)
 
 # PLOT THE ESTIMATED MODEL
 # pdf(file = "Physheal.pdf")
-quantile(longer_comp$x.c, probs = c(0.05, 0.95))
-quantile(longer_comp$y.c, probs = c(0.05, 0.95))
+quantile(longer_comp$CWC_x, probs = c(0.05, 0.95))
+quantile(longer_comp$CWC_y, probs = c(0.05, 0.95))
 
-quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))
+quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95), na.rm = T)
 
-MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),
+MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2"),
                          outcome="sf12pcs",data=longer_comp, type = "interactive",
                          axesStyles=list(LOC = list(lty="solid", lwd=2, col= "black")),
                          xlab="Vitality",ylab="Learning",zlab="Physical Health", bw = T,
                          panel.aspect = c(1,1))
 
-name_vars=c("x.c","y.c","x2.c","xy.c","y2.c")
+name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2")
 
 b0 <- fixef(mphys_randomX_Y)["(Intercept)"]
 b1 <- fixef(mphys_randomX_Y)[name_vars[1]]
@@ -1094,12 +1271,7 @@ b3 <- fixef(mphys_randomX_Y)[name_vars[3]]
 b4 <- fixef(mphys_randomX_Y)[name_vars[4]]
 b5 <- fixef(mphys_randomX_Y)[name_vars[5]]
 
-plotting_df <- longer_comp %>% select(x.c, y.c, sf12pcs)
-loquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[1]
-upquant <- quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95))[2]
-
-plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
-plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
+plotting_df <- longer_comp %>% select(CWC_x, CWC_y, sf12pcs)
 
 pdf(file = "../figures/physhealplot.pdf")
 
@@ -1119,59 +1291,40 @@ dev.off()
 
 ```{r}
 
-write.csv(longer_comp_l, "../../data/longer_comp_l.csv")
-names(longer_comp_l)
 mphys_randomX_Y_lagged<- lmer(Physical.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
                         Positive.affect+ Negative.affect + Demands+ Autonomy + 
                         Coworker.support + Supervisor.support + Time + 
                           Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
                         Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
                           Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
-                          Age + Gender + Education + Organizational.tenure +
+                          Age + Gender + Education + Organizational.tenure + `T-1.Physical.health` +
                         (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 summary(mphys_randomX_Y_lagged)
 
 tab_model(mphys_randomX_Y_lagged, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 
-
 ```
 
-### Mental health by vitality and learning, and thriving, without interaction and polynomial
+
+### Mental health by thriving
 
 ```{r}
-mment_randomX_Y <- lmer(sf12mcs ~1 +CWC_vitality+ CWC_learn +
-                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
-                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        vitality.mean + learn.mean + 
-                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+CWC_vitality + CWC_learn|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
-summary(mment_randomX_Y)
-tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE, digits.re = 3)
-
-std_coef_phys_XY <- stdCoef.merMod(mment_randomX_Y)
-
-cat("R square marginal =" ,r.squaredGLMM(mment_randomX_Y)[1,1])
-cat("R square conditional =" ,r.squaredGLMM(mment_randomX_Y)[1,2])
-
-check_collinearity(mment_randomX_Y, sort = T)
-
-
-# Mental health by thriving
+# Physical health by thriving
 mment_randomthriv <- lmer(sf12mcs~1 +CWC_thriv+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + set +
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        thriv_mean + pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
+                        thriv.mean + 
+                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
                         (1+CWC_thriv|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 summary(mment_randomthriv)
-
 tab_model(mment_randomthriv, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 cat("R square marginal =" ,r.squaredGLMM(mment_randomthriv)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mment_randomthriv)[1,2])
 r.squaredGLMM(mment_randomthriv)
 check_collinearity(mment_randomthriv, sort = T)
 
-std_coef_ment_thriv <- stdCoef.merMod(mment_randomthriv)
+std_coef_phys_thriv <- stdCoef.merMod(mment_randomthriv)
 
 
 ```
@@ -1179,31 +1332,40 @@ std_coef_ment_thriv <- stdCoef.merMod(mment_randomthriv)
 ### Mental health by vitality and learning with interaction and polynomial
 
 ```{r}
-mment_randomX_Y <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+
+mment_randomX_Y <- lmer(sf12mcs ~1 +CWC_x+CWC_y+CWC_x2+CWC_xy+CWC_y2+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        vitality.mean+learn.mean+vitality2.mean+vitalitylearn.mean+learn2.mean+ 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+x.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+                        (1+CWC_x|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+
 summary(mment_randomX_Y)
 
-tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE)
+tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE, digits.re = 3)
 
 std_coef_ment_XY <- stdCoef.merMod(mment_randomX_Y)
 
 cat("R square marginal =" ,r.squaredGLMM(mment_randomX_Y)[1,1])
 cat("R square conditional =" ,r.squaredGLMM(mment_randomX_Y)[1,2])
 
-MLRSA_AverageSurface(mment_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),random_vars=c("x.c",NA,NA,NA,NA)) 
+MLRSA_AverageSurface(mment_randomX_Y,name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2"),random_vars=c("CWC_x",NA,NA,NA,NA)) 
 check_collinearity(mment_randomX_Y, sort = T)
 
 # PLOT THE ESTIMATED MODEL
-# pdf(file = "Physheal.pdf")
-MLRSA_AverageSurfacePlot(mment_randomX_Y,name_vars=c("x.c","y.c","x2.c","xy.c","y2.c"),
-                          outcome="sf12mcs",data=longer_comp,
-                          xlab="Vitality",ylab="Learning",zlab="Physical Health")
-# 
-# dev.off()
+# pdf(file = "mentheal.pdf")
+quantile(longer_comp$CWC_x, probs = c(0.05, 0.95))
+quantile(longer_comp$CWC_y, probs = c(0.05, 0.95))
+
+quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95), na.rm = T)
+
+MLRSA_AverageSurfacePlot(mment_randomX_Y,name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2"),
+                         outcome="sf12mcs",data=longer_comp, type = "interactive",
+                         axesStyles=list(LOC = list(lty="solid", lwd=2, col= "black")),
+                         xlab="Vitality",ylab="Learning",zlab="Mental Health", bw = T,
+                         panel.aspect = c(1,1))
+
+name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2")
 
 b0 <- fixef(mment_randomX_Y)["(Intercept)"]
 b1 <- fixef(mment_randomX_Y)[name_vars[1]]
@@ -1212,50 +1374,40 @@ b3 <- fixef(mment_randomX_Y)[name_vars[3]]
 b4 <- fixef(mment_randomX_Y)[name_vars[4]]
 b5 <- fixef(mment_randomX_Y)[name_vars[5]]
 
-plotting_df <- longer_comp %>% select(x.c, y.c, sf12mcs)
-loquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[1]
-upquant <- quantile(longer_comp$sf12mcs, probs = c(0.05, 0.95))[2]
-
-plotting_df <- subset(plotting_df, plotting_df[ , 3] > loquant)
-plotting_df <- subset(plotting_df, plotting_df[ , 3] < upquant)
+plotting_df <- longer_comp %>% select(CWC_x, CWC_y, sf12mcs)
 
 pdf(file = "../figures/menthealplot.pdf")
 
 plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
-                type = "3d", surface = NULL,
+                type = "3d", surface = NULL, 
                 points = 
                   list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
                        color = "transparent", cex = 0.07, out.mark = FALSE),
                 xlab = "Vitality", ylab = "Learning", zlab = "Mental Health",
-                pad = c(1,2,-3), bw = T, xlim = c(-3,3), ylim = c(-3,3) 
+                pad = c(1,2,-3), bw = T, xlim = c(-3,3), ylim = c(-3,3), suppress.grid = F, 
+                maxlines = F
                 )
-
- plot
+plot
 dev.off()
-
 ```
 
-#### Without random slopes
+#### Lagged
 
 ```{r}
-mment_randomX_Y_noslope <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
-                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
-                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
-                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 
-mment_randomX_Y_noslope_l <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
-                        GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
-                        CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
-                        pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1|ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+mment_randomX_Y_lagged<- lmer(Mental.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure + `T-1.Mental.health` +
+                        (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
 
-tab_model(mment_randomX_Y_noslope, show.ci = FALSE, show.se = TRUE)
-tab_model(mment_randomX_Y_noslope_l, show.ci = FALSE, show.se = TRUE)
+summary(mment_randomX_Y_lagged)
 
-tab_model(mment_randomX_Y, show.ci = FALSE, show.se = TRUE)
+tab_model(mment_randomX_Y_lagged, show.ci = FALSE, show.se = TRUE, digits.re = 3)
+
 ```
 
 

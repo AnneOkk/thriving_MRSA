@@ -82,20 +82,21 @@ The dots represent the raw data points. The x and y axes represent the person-me
 
 
 ```{r echo = FALSE}
-longer_comp <- read_excel("../../data/longer_comp.xlsx")
+longer_comp <- read_csv("../../data/longer_comp.csv")
 
-mphys_randomX_Y <- lmer(sf12pcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+
+mphys_randomX_Y <- lmer(sf12pcs ~1 +CWC_x+CWC_y+CWC_x2+CWC_xy+CWC_y2+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        vitality.mean+learn.mean+vitality2.mean+vitalitylearn.mean+learn2.mean+ 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+                        (1+CWC_x|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 
 # PLOT THE ESTIMATED MODEL
 # pdf(file = "Physheal.pdf")
 
-name_vars=c("x.c","y.c","x2.c","xy.c","y2.c")
+name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2")
 
 b0 <- fixef(mphys_randomX_Y)["(Intercept)"]
 b1 <- fixef(mphys_randomX_Y)[name_vars[1]]
@@ -104,7 +105,7 @@ b3 <- fixef(mphys_randomX_Y)[name_vars[3]]
 b4 <- fixef(mphys_randomX_Y)[name_vars[4]]
 b5 <- fixef(mphys_randomX_Y)[name_vars[5]]
 
-plotting_df <- longer_comp %>% select(x.c, y.c, sf12pcs)
+plotting_df <- longer_comp %>% select(CWC_x, CWC_y, sf12pcs)
 
 write.csv(plotting_df,"../../response_surface.csv", row.names = TRUE) 
 ```
@@ -117,9 +118,9 @@ library(geomorph)
 
 set.seed(123)
 
-x <- plotting_df$x.c
+x <- plotting_df$CWC_x
 
-y <- plotting_df$y.c
+y <- plotting_df$CWC_y
 
 z <- plotting_df$sf12pcs
 
@@ -130,14 +131,14 @@ df <- data.frame(x, y, z, z_pred)
 
 plot_ly(z = df, type = "surface") %>% 
   add_trace(text = "Data points", name = "Data point", data = df, x = x, y = y, z = z, mode = "markers", type = "scatter3d", 
-            marker = list(size = 4, color = "red", symbol = 104)) %>%
-  add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d") %>%
+            marker = list(size = 3.5, color = "#404788", symbol = 104)) %>%
+  add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d", color = "#efe350") %>%
   layout(showlegend = FALSE, 
          scene = list(
            xaxis = list(title = "Vitality"),
            yaxis = list(title = "Learning"),
            zaxis = list(title = "Physical health"),
-           aspectratio = list(x=1, y=1, z=1.5)))
+           aspectratio = list(x=1, y=1, z=1)))
 
 ```
 
@@ -151,15 +152,13 @@ The dots represent the raw data points. The x and y axes represent the person-me
 
 
 ```{r echo = FALSE}
-longer_comp <- read_excel("../../data/longer_comp.xlsx")
 
-
-mment_randomX_Y <- lmer(sf12mcs ~1 +x.c+y.c+x2.c+xy.c+y2.c+
+mment_randomX_Y <- lmer(sf12mcs ~1 +CWC_x+CWC_y+CWC_x2+CWC_xy+CWC_y2+
                         GMC_T1_age+ GMC_T1_sex + GMC_T1_edu+ GMC_T1_tenure_org + 
                         CWC_pa + CWC_na + CWC_demands + CWC_aut + CWC_csup + CWC_ssup +
-                        x.mean+y.mean+x2.mean+xy.mean+y2.mean+ 
+                        vitality.mean+learn.mean+vitality2.mean+vitalitylearn.mean+learn2.mean+ 
                         pa.mean+ na.mean + demands.mean + aut.mean + csup.mean + ssup.mean + set +
-                        (1+x.c+y.c|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
+                        (1+CWC_x|ID),data=longer_comp,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 
 b0 <- fixef(mment_randomX_Y)["(Intercept)"]
@@ -169,15 +168,15 @@ b3 <- fixef(mment_randomX_Y)[name_vars[3]]
 b4 <- fixef(mment_randomX_Y)[name_vars[4]]
 b5 <- fixef(mment_randomX_Y)[name_vars[5]]
 
-plotting_df <- longer_comp %>% select(x.c, y.c, sf12mcs)
+plotting_df <- longer_comp %>% select(CWC_x, CWC_y, sf12mcs)
 ```
 
 ```{r}
 set.seed(123)
 
-x <- plotting_df$x.c
+x <- plotting_df$CWC_x
 
-y <- plotting_df$y.c
+y <- plotting_df$CWC_y
 
 z <- plotting_df$sf12mcs
 
@@ -188,14 +187,14 @@ df <- data.frame(x, y, z, z_pred)
 
 plot_ly(z = df, type = "surface") %>% 
   add_trace(text = "Data point", name = "Data point", data = df, x = x, y = y, z = z, mode = "markers", type = "scatter3d", 
-            marker = list(size = 4, color = "red", symbol = 104)) %>%
-  add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d") %>%
+            marker = list(size = 3.5, color = "#404788", symbol = 104)) %>%
+  add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d", color = "efe350") %>%
   layout(showlegend = FALSE, 
          scene = list(
            xaxis = list(title = "Vitality"),
            yaxis = list(title = "Learning"),
            zaxis = list(title = "Mental health"),
-           aspectratio = list(x=1, y=1, z=1.5)))
+           aspectratio = list(x=1, y=1, z=1)))
 
 ```
 
@@ -208,11 +207,11 @@ $~$
 
 # Multilevel lagged analyses
 
+```{r evaluate = FALSE, include = FALSE}
 ## Measurement invariance
 
-Model fit statistics for the test of measurement invariance for vitality and learning across T1 to T4
+#Model fit statistics for the test of measurement invariance for vitality and learning across T1 to T4
 
-```{r echo = FALSE}
 dataset <- read_csv("../../data/dataset.csv")
 
 library(semTools)
@@ -346,26 +345,12 @@ knitr::kable(fit_table, caption = "N = 1,064. CFI = comparative fit index; TLI =
 ```
 
 
-$~$
+Lagged multilevel models including the effects of predictors measured at t-1 on physical and menyal health measured at t
 
-## Lagged effects multilevel models
-
-Lagged multilevel models including the effects of predictors measured at t-1 on health measured at t
-
-### Physical health
+## Physical health
 
 ```{r echo = FALSE}
 longer_comp_l <- read_csv("../../data/longer_comp_l.csv")
-
-mphys_random_thriv_lagged<- lmer(Physical.health ~1 +Thriving+
-                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
-                        Coworker.support + Supervisor.support + Time + 
-                          Mean.thriving +
-                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
-                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
-                          Age + Gender + Education + Organizational.tenure +
-                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
-
 
 mphys_randomX_Y_lagged<- lmer(Physical.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
                         Positive.affect+ Negative.affect + Demands+ Autonomy + 
@@ -373,13 +358,23 @@ mphys_randomX_Y_lagged<- lmer(Physical.health ~1 +Vitality+Learning+ Vitality.sq
                           Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
                         Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
                           Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
-                          Age + Gender + Education + Organizational.tenure +
+                          Age + Gender + Education + Organizational.tenure + `T-1.Physical.health` +
                         (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+mphys_random_thriv_lagged<- lmer(Physical.health ~1 +Thriving+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.thriving + 
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure + `T-1.Physical.health` +
+                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 
 tab2 <- tab_model(c(mphys_random_thriv_lagged, mphys_randomX_Y_lagged), show.ci = FALSE, show.se = TRUE, digits.re = 3, show.std = TRUE, 
                   title = "Model 1:Physical health predicted by thriving and control variables; Model 2: Physical health predicted by learning and vitality linear, interaction, and squared terms and control variables.", string.est = "b",string.se = "SE",  string.std = "beta",
-                  order.terms = c(1, 21:25, 2:9, 26:30, 10:20), 
+                   order.terms = c(1, 21, 2, 22:26, 3:9, 27:31, 10:20), 
                    string.std_se = "SE beta", dv.labels = c("Model 1", "Model 2"))
 
 
@@ -389,18 +384,10 @@ tab2
 
 $~$
 
-### Mental health
+## Mental health
 
 ```{r echo = FALSE}
-mment_random_thriv_lagged<- lmer(Mental.health ~1 +Thriving+
-                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
-                        Coworker.support + Supervisor.support + Time + 
-                          Mean.thriving +
-                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
-                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
-                          Age + Gender + Education + Organizational.tenure +
-                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
-
+longer_comp_l <- read_csv("../../data/longer_comp_l.csv")
 
 mment_randomX_Y_lagged<- lmer(Mental.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+
                         Positive.affect+ Negative.affect + Demands+ Autonomy + 
@@ -408,27 +395,30 @@ mment_randomX_Y_lagged<- lmer(Mental.health ~1 +Vitality+Learning+ Vitality.squa
                           Mean.vitality + Mean.learning + Mean.vitality.squared + Mean.vitality.x.learning + Mean.learning.squared +
                         Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
                           Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
-                          Age + Gender + Education + Organizational.tenure +
+                          Age + Gender + Education + Organizational.tenure + `T-1.Mental.health` +
                         (1+Vitality|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
+
+
+mment_random_thriv_lagged<- lmer(Mental.health ~1 +Thriving+
+                        Positive.affect+ Negative.affect + Demands+ Autonomy + 
+                        Coworker.support + Supervisor.support + Time + 
+                          Mean.thriving + 
+                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
+                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
+                          Age + Gender + Education + Organizational.tenure + `T-1.Mental.health` +
+                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
 
 
 tab2 <- tab_model(c(mment_random_thriv_lagged, mment_randomX_Y_lagged), show.ci = FALSE, show.se = TRUE, digits.re = 3, show.std = TRUE, 
                   title = "Model 1:Mental health predicted by thriving and control variables; Model 2: Mental health predicted by learning and vitality linear, interaction, and squared terms and control variables.", string.est = "b",string.se = "SE",  string.std = "beta",
-                  order.terms = c(1, 21:25, 2:9, 26:30, 10:20), 
+                   order.terms = c(1, 21, 2, 22:26, 3:9, 27:31, 10:20), 
                    string.std_se = "SE beta", dv.labels = c("Model 1", "Model 2"))
 
+
+tab2
+
 ```
 
-```{r}
-mment_random_thriv_lagged<- lmer(Mental.health ~1 +lag1.Thriving+
-                        lag1.Positive.affect+ lag1.Negative.affect + lag1.Demands+ lag1.Autonomy + 
-                        lag1.Coworker.support + lag1.Supervisor.support + lag1.Time + 
-                          Mean.thriving +
-                        Mean.positive.affect + Mean.negative.affect+ Mean.demands+ 
-                          Mean.autonomy+ Mean.coworker.support+ Mean.supervisor.support +  
-                          Age + Gender + Education + Organizational.tenure +
-                        (1+Thriving|Person.ID),data=longer_comp_l,REML=F, control=lmerControl(optimizer="bobyqa"))
-```
 
 
 
