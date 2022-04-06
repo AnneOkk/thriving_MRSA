@@ -207,8 +207,12 @@ $~$
 
 # Multilevel lagged analyses
 
-```{r evaluate = FALSE, include = FALSE}
+$~$
+
 ## Measurement invariance
+
+```{r}
+
 
 #Model fit statistics for the test of measurement invariance for vitality and learning across T1 to T4
 
@@ -344,10 +348,12 @@ knitr::kable(fit_table, caption = "N = 1,064. CFI = comparative fit index; TLI =
 
 ```
 
-
-Lagged multilevel models including the effects of predictors measured at t-1 on physical and menyal health measured at t
+$~$
 
 ## Physical health
+
+Lagged multilevel model including the effects of predictors measured at t-1 on physical health measured at t
+
 
 ```{r echo = FALSE}
 longer_comp_l <- read_csv("../../data/longer_comp_l.csv")
@@ -385,6 +391,9 @@ tab2
 $~$
 
 ## Mental health
+
+Lagged multilevel model including the effects of predictors measured at t-1 on mental health measured at t
+
 
 ```{r echo = FALSE}
 longer_comp_l <- read_csv("../../data/longer_comp_l.csv")

@@ -5,6 +5,7 @@ date: "7/28/2021"
 output: html_document
 ---
 
+
 # Preparation 
 ```{r}
 # rename datasets
@@ -92,7 +93,6 @@ comp_df <- do.call("cbind", comp) %>%
   cbind(demo_dat, .) 
 alph_df <- do.call("rbind", alph) %>% round(., 2)
 
-alph_df
 ```
 
 # Correlation table full data set
@@ -261,7 +261,6 @@ flat_cor$p <- round(flat_cor$p, 3)
 ```
 
 
-
 # Discrepancy assessment
 
 ```{r eval = F}
@@ -337,287 +336,6 @@ flat_cor$p <- round(flat_cor$p, 3)
 # dataframe$T4_PCS <- T4_PCS
 # dataframe$T5_PCS <- T5_PCS
 
-```
-
-  # Measurement invariance
-
-```{r}
-model_configural <- '
-Vita_T1     =~ T2_vitality1 + T2_vitality2 + T2_vitality5
-Vita_T2     =~ T3_vitality1 + T3_vitality2 + T3_vitality5
-Vita_T3     =~ T4_vitality1 + T4_vitality2 + T4_vitality5
-Vita_T4     =~ T5_vitality1 + T5_vitality2 + T5_vitality5
-
-
-Learn_T1    =~ T2_learn1 + T2_learn2 + T2_learn3 
-Learn_T2    =~ T3_learn1 + T3_learn2 + T3_learn3 
-Learn_T3    =~ T4_learn1 + T4_learn2 + T4_learn3 
-Learn_T4    =~ T5_learn1 + T5_learn2 + T5_learn3 
-
-'
-
-fit <- cfa(model_configural, data =dataset, missing="ML")
-summary(fit)
-
-longFacNames <- list(
-  VITA =     c("Vita_T1","Vita_T2","Vita_T3", "Vita_T4"),
-  LEARN =    c("Learn_T1","Learn_T2","Learn_T3", "Learn_T4"))
-
-
-syntax.config <- measEq.syntax(configural.model = model_configural,
-                               data = dataset,
-                               ID.fac = "std.lv",
-                               longFacNames = longFacNames,
-                               auto="all")
-
-mod.config <- as.character(syntax.config)   # save as text
-
-fit.config <- cfa(mod.config, 
-                  data = dataset, 
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-syntax.metric <- measEq.syntax(configural.model = model_configural, 
-                               data = dataset,
-                               ID.fac = "std.lv", 
-                               longFacNames = longFacNames,
-                               group.equal = c("loadings"),
-                               long.equal  = c("loadings"),
-                               auto="all")
-
-mod.metric <- as.character(syntax.metric)   # save as text
-
-## fit model to data
-fit.metric <- cfa(mod.metric, 
-                  data = dataset,
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-syntax.strong <- measEq.syntax(configural.model = model_configural, 
-                               data = dataset,
-                               parameterization = "theta",
-                               ID.fac = "std.lv", 
-                               longFacNames = longFacNames,
-                               group.equal = c("loadings", "intercepts"),
-                               long.equal  = c("loadings", "intercepts"),
-                               auto="all")
-
-mod.strong<- as.character(syntax.strong)    # save as text
-
-## fit model to data
-fit.strong<- cfa(mod.strong, 
-                  data = dataset,
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-syntax.strict <- measEq.syntax(configural.model = model_configural, 
-                               data = dataset,
-                               ID.fac = "std.lv", 
-                               longFacNames = longFacNames,
-                               group.equal = c("loadings", "intercepts", "means"),
-                               long.equal  = c("loadings", "intercepts", "means"),
-                               auto="all")
-
-mod.strict<- as.character(syntax.strict)   # save as text
-
-## fit model to data
-fit.strict<- cfa(mod.strict, 
-                  data = dataset, 
-                  parameterization = "theta", 
-                  estimator="ML",
-                  missing="ML")
-
-
-compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@nested %>%
-  kable(digits = 3) %>%
-  kable_classic(full_width=FALSE, html_font = "CMU Serif")
-
-
-compareFit(fit.config, fit.metric, fit.strong, fit.strict, nested = TRUE)@fit %>%
-  dplyr::select(matches("chisq|df|pvalue|cfi|tli|rmsea|srmr")) %>%
-  kable(digits = 3) %>%
-  kable_classic(full_width=FALSE, html_font = "CMU Serif") 
-
-
-```
-
-
-# Multilevel CFA + Reliabilities
-
-```{r}
-dataset$ID <- seq.int(nrow(dataset))
-
-longer <- dataset %>%
- pivot_longer(matches("T2|T3|T4|T5"),
-    names_pattern = "(T._)(.*)",
-   names_to = c( "set", ".value")
- )
-
-
-model <- '
-    level: 1
-        vita_w  =~  vitality1 + vitality2 + vitality5
-        learn_w =~ learn1 + learn2 + learn3
-        aut_w  =~  aut1 + aut2 + aut3
-        demands_w =~ demands1 + demands2 + demands3
-        csup_w =~ csup1 + csup2 + csup3 + csup4
-        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
-        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
-        na_w =~ na1 + na2 + na3 + na4 + na5
-        phys_w  =~ sf12pcs
-        ment_w  =~ sf12mcs
-        sf12pcs ~~ 0*sf12pcs
-        sf12mcs ~~ 0*sf12mcs
-
-        
-    level: 2
-        vita_b  =~  vitality1 + vitality2 + vitality5
-        learn_b =~ learn1 + learn2 + learn3
-        aut_b  =~  aut1 + aut2 + aut3
-        demands_b =~ demands1 + demands2 + demands3
-        csup_b =~ csup1 + csup2 + csup3 + csup4
-        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
-        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
-        na_b =~ na1 + na2 + na3 + na4 + na5
-        phys_b  =~ sf12pcs
-        ment_b  =~ sf12mcs
-        sf12pcs ~~ 0*sf12pcs
-        sf12mcs ~~ 0*sf12mcs
-        
-'
-
-model_thriv <- '
-    level: 1
-        thriv_w =~ thriv1 + thriv2 + thriv3 + thriv4 + thriv5 + thriv6
-
-    level: 2
-        thriv_b =~ thriv1 + thriv2 + thriv3 + thriv4 + thriv5 + thriv6
-'
-
-
-
-fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
-summary(fit, fit.measures=TRUE)
-fit_thriv <- sem(model_thriv, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
-
-rels_within_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
-  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
-  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2) %>%  gsub("0.", ".", .)
-
-rels_within <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
-  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
-  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2) %>% c(rels_within_thriv, .) %>% .[c(2, 3, 1, 4: 9)] %>%  gsub("0.", ".", .)
-
-rels_between_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
-  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
-  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) %>% gsub("0.", ".", .)
-
-rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
-  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
-  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) %>% c(rels_between_thriv, .)  %>% .[c(2, 3, 1, 4: 9)] %>% 
-  gsub("0.", ".", .)
-
-rels <- cbind(rels_within, rels_between) %>% rbind(., matrix(data="", ncol=2, nrow=6))
-
-#modificationindices(fit, sort = T)
-```
-
-## CFA vit + learn
-
-```{r}
-model <- '
-    level: 1
-        vita_w  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
-        aut_w  =~  aut1 + aut2 + aut3
-        demands_w =~ demands1 + demands2 + demands3
-        csup_w =~ csup1 + csup2 + csup3 + csup4
-        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
-        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
-        na_w =~ na1 + na2 + na3 + na4 + na5
-
-        phys_w  =~ sf12pcs
-        ment_w  =~ sf12mcs
-        sf12pcs ~~ 0*sf12pcs
-        sf12mcs ~~ 0*sf12mcs
-
-
-    level: 2
-        vita_b  =~  vitality1 + vitality2 + vitality5 + learn1 + learn2 + learn3
-        aut_b  =~  aut1 + aut2 + aut3
-        demands_b =~ demands1 + demands2 + demands3
-        csup_b =~ csup1 + csup2 + csup3 + csup4
-        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
-        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
-        na_b =~ na1 + na2 + na3 + na4 + na5
-        
-        phys_b  =~ sf12pcs
-        ment_b  =~ sf12mcs
-        sf12pcs ~~ 0*sf12pcs
-        sf12mcs ~~ 0*sf12mcs
-'
-
-
-
-fit2 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
-summary(fit2, fit.measures=TRUE)
-```
-
-## CFA vit + pa
-
-```{r}
-model <- '
-    level: 1
-        vita_w  =~  vitality1 + vitality2 + vitality5 + pa1 + pa2 + pa3 + pa4 + pa5
-        learn_w =~ learn1 + learn2 + learn3
-        aut_w  =~  aut1 + aut2 + aut3
-        demands_w =~ demands1 + demands2 + demands3
-        csup_w =~ csup1 + csup2 + csup3 + csup4
-        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
-        na_w =~ na1 + na2 + na3 + na4 + na5
-
-        phys_w  =~ sf12pcs
-        ment_w  =~ sf12mcs
-        sf12pcs ~~ 0*sf12pcs
-        sf12mcs ~~ 0*sf12mcs
-
-
-    level: 2
-        vita_b  =~  vitality1 + vitality2 + vitality5 + pa1 + pa2 + pa3 + pa4 + pa5
-        learn_b =~ learn1 + learn2 + learn3
-        aut_b  =~  aut1 + aut2 + aut3
-        demands_b =~ demands1 + demands2 + demands3
-        csup_b =~ csup1 + csup2 + csup3 + csup4
-        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
-        na_b =~ na1 + na2 + na3 + na4 + na5
-        
-        phys_b  =~ sf12pcs
-        ment_b  =~ sf12mcs
-        sf12pcs ~~ 0*sf12pcs
-        sf12mcs ~~ 0*sf12mcs
-'
-
-
-
-fit3 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
-summary(fit3, fit.measures=TRUE)
-```
-
-
-```{r}
-library(tab_model)
-summary(fit)
-
-fits <- compareFit(fit, fit2)
-summary(fits)
-
-fits2 <- compareFit(fit, fit3)
-summary(fits2)
 ```
 
 
@@ -799,6 +517,215 @@ summary(compareFit(fit.ml.config, fit.ml.metric, fit.ml.scalar), fit.measures = 
 reliability(fit.ml.config, return.total = TRUE)
 ```
 
+
+```{r}
+longer$sf12pcs
+```
+
+
+# Multilevel Reliabilities
+
+```{r}
+dataset$ID <- seq.int(nrow(dataset))
+
+longer <- dataset %>%
+ pivot_longer(matches("T2|T3|T4|T5"),
+    names_pattern = "(T._)(.*)",
+   names_to = c( "set", ".value")
+ )
+
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5
+        learn_w =~ learn1 + learn2 + learn3
+        aut_w  =~  aut1 + aut2 + aut3
+        demands_w =~ demands1 + demands2 + demands3
+        csup_w =~ csup1 + csup2 + csup3 + csup4
+        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_w =~ na1 + na2 + na3 + na4 + na5
+        phys_w  =~ sf12pf + sf12rp + sf12bp + sf12gh
+        ment_w  =~ sf12vt + sf12sf + sf12re + sf12mh
+
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5
+        learn_b =~ learn1 + learn2 + learn3
+        aut_b  =~  aut1 + aut2 + aut3
+        demands_b =~ demands1 + demands2 + demands3
+        csup_b =~ csup1 + csup2 + csup3 + csup4
+        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_b =~ na1 + na2 + na3 + na4 + na5
+        phys_b  =~ sf12pf + sf12rp + sf12bp + sf12gh
+        ment_b  =~ sf12vt + sf12sf + sf12re + sf12mh
+        
+'
+
+model_thriv <- '
+    level: 1
+        thriv_w =~ thriv1 + thriv2 + thriv3 + thriv4 + thriv5 + thriv6
+
+    level: 2
+        thriv_b =~ thriv1 + thriv2 + thriv3 + thriv4 + thriv5 + thriv6
+'
+
+
+
+fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit, fit.measures=TRUE)
+fit_thriv <- sem(model_thriv, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+
+rels_within_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2) %>%  gsub("0.", ".", .)
+
+rels_within <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2) %>% c(rels_within_thriv, .) %>% .[c(2, 3, 1, 4: 9)] %>%  gsub("0.", ".", .)
+
+rels_between_thriv <- reliability(fit_thriv, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) %>% gsub("0.", ".", .)
+
+rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) %>% c(rels_between_thriv, .)  %>% .[c(2, 3, 1, 4: 9)] %>% 
+  gsub("0.", ".", .)
+
+rels <- cbind(rels_within, rels_between) %>% rbind(., matrix(data="", ncol=2, nrow=6))
+
+#modificationindices(fit, sort = T)
+```
+
+# Test-retest reliability
+
+```{r}
+longer$set <- as.numeric(gsub("T|_", "", longer$set))
+longer_T1_T2 <- longer %>% filter(set == 2 | set == 3)
+pcs <- longer_T1_T2 %>% select(matches("sf12pf|sf12rp|sf12bp|sf12gh")) %>% names(.)
+testre <- testRetest(longer_T1_T2, select = pcs, time = "set", id = "ID")
+summary(testre)
+
+
+```
+
+
+# Multilevel Reliabilities - single health items 
+
+```{r}
+dataset$ID <- seq.int(nrow(dataset))
+
+longer <- dataset %>%
+ pivot_longer(matches("T2|T3|T4|T5"),
+    names_pattern = "(T._)(.*)",
+   names_to = c( "set", ".value")
+ )
+
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5
+        learn_w =~ learn1 + learn2 + learn3
+        aut_w  =~  aut1 + aut2 + aut3
+        demands_w =~ demands1 + demands2 + demands3
+        csup_w =~ csup1 + csup2 + csup3 + csup4
+        ssup_w =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_w =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_w =~ na1 + na2 + na3 + na4 + na5
+        phys_w  =~ sf12pf + sf12rp + sf12bp + sf12gh
+        ment_w  =~ sf12vt + sf12sf + sf12re + sf12mh
+
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5
+        learn_b =~ learn1 + learn2 + learn3
+        aut_b  =~  aut1 + aut2 + aut3
+        demands_b =~ demands1 + demands2 + demands3
+        csup_b =~ csup1 + csup2 + csup3 + csup4
+        ssup_b =~ ssup1 + ssup2 + ssup3 + ssup4
+        pa_b =~ pa1 + pa2 + pa3 + pa4 + pa5
+        na_b =~ na1 + na2 + na3 + na4 + na5
+        phys_b  =~ sf12pf + sf12rp + sf12bp + sf12gh
+        ment_b  =~ sf12vt + sf12sf + sf12re + sf12mh
+'
+
+fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit, fit.measures=TRUE)
+
+rels_within <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2)
+
+rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) 
+
+rels <- cbind(rels_within, rels_between) %>% rbind(., matrix(data="", ncol=2, nrow=6))
+
+#modificationindices(fit, sort = T)
+```
+
+# Multilevel Reliabilities - original health items 
+
+```{r}
+
+SF <- dataset3 %>%  mutate(T2_SF12 = (T2_SF12*(-1) + 6)) %>%  mutate(T2_SF13 = (T2_SF13*(-1) + 6)) %>% 
+  mutate(T3_SF12 = (T3_SF12*(-1) + 6)) %>%  mutate(T3_SF13 = (T3_SF13*(-1) + 6)) %>% 
+  mutate(T4_SF12 = (T4_SF12*(-1) + 6)) %>%  mutate(T4_SF13 = (T4_SF13*(-1) + 6)) %>% 
+  mutate(T5_SF12 = (T5_SF12*(-1) + 6)) %>%  mutate(T5_SF13 = (T5_SF13*(-1) + 6)) %>% 
+  select(matches("T\\d_SF\\d{1,2}$", ignore.case = F)) %>% scale(.) %>% as.data.frame(.)
+
+phys_heal <- SF %>%  select(T2_SF1, T2_SF11, T2_SF2, T2_SF3, T2_SF4, T2_SF5)
+psych::alpha(phys_heal)
+
+ment_heal <- SF %>%  select(T2_SF12, T2_SF13, T2_SF14, T2_SF15, T2_SF6, T2_SF7)
+psych::alpha(ment_heal)
+
+```
+
+
+```{r}
+SF$ID <- seq.int(nrow(SF))
+
+longer <- SF %>%
+ pivot_longer(matches("T2|T3|T4|T5"),
+    names_pattern = "(T._)(.*)",
+   names_to = c( "set", ".value")
+ )
+
+
+model <- '
+    level: 1
+        phys_w  =~ SF1 + SF11 + SF2 + SF3 + SF4 + SF5
+        ment_w  =~ SF12 + SF13 + SF14 + SF15 + SF6 + SF7
+
+
+        
+    level: 2
+        phys_b  =~ SF1 + SF11 + SF2 + SF3 + SF4 + SF5
+        ment_b  =~ SF12 + SF13 + SF14 + SF15 + SF6 + SF7
+'
+
+fit <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit, fit.measures=TRUE)
+
+rels_within <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$within[1, ] %>% round(., 2)
+
+rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", "ave"),
+  return.total = FALSE, dropSingle = TRUE, omit.factors = character(0),
+  omit.indicators = character(0), omit.imps = c("no.conv", "no.se"))$ID[1, ] %>% round(., 2) 
+
+
+#modificationindices(fit, sort = T)
+```
+
+
 # Multilevel CFA reduced 
 
 ```{r}
@@ -880,7 +807,18 @@ fit3 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALS
 summary(fit3, fit.measures=TRUE)
 ```
 
-# Multilevel regression analyses
+
+```{r}
+summary(fit)
+
+fits <- compareFit(fit, fit2)
+summary(fits)
+
+fits2 <- compareFit(fit, fit3)
+summary(fits2)
+```
+
+# Multilevel analyses
 
 ## Preparation
 
@@ -992,7 +930,6 @@ ICC_1 <- gsub("0.", ".", ICC_2)
 ICC_12 <- cbind(ICC_1, ICC_2)
 ```
 
-# Add reliabilities
 
 # Crate cortable with additional info 
 ```{r}
@@ -1284,7 +1221,9 @@ plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
                 pad = c(1,2,-3), bw = T, xlim = c(-3,3), ylim = c(-3,3) 
                 )
 plot
-dev.off()
+dev.off
+
+
 ```
 
 #### Lagged
@@ -1388,7 +1327,8 @@ plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
                 maxlines = F
                 )
 plot
-dev.off()
+dev.off
+
 ```
 
 #### Lagged
