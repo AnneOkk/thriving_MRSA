@@ -518,11 +518,6 @@ reliability(fit.ml.config, return.total = TRUE)
 ```
 
 
-```{r}
-longer$sf12pcs
-```
-
-
 # Multilevel Reliabilities
 
 ```{r}
@@ -728,6 +723,8 @@ rels_between <- reliability(fit, what = c("alpha", "omega", "omega2", "omega3", 
 
 # Multilevel CFA reduced 
 
+## Orig model 
+
 ```{r}
 dataset$ID <- seq.int(nrow(dataset))
 
@@ -762,6 +759,8 @@ fit1 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALS
 summary(fit1, fit.measures=TRUE)
 ```
 
+## Vita and learn combined
+
 ```{r}
 model <- '
     level: 1
@@ -785,6 +784,8 @@ fit2 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALS
 summary(fit2, fit.measures=TRUE)
 ```
 
+## Ment and vita
+
 ```{r}
 
 model <- '
@@ -807,12 +808,127 @@ fit3 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALS
 summary(fit3, fit.measures=TRUE)
 ```
 
+## Vita and phys
 
 ```{r}
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 + sf12pcs
+        learn_w =~ learn1 + learn2 + learn3
+        ment_w  =~ sf12mcs
+        sf12mcs ~~ 0*sf12mcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 + sf12pcs
+        learn_b =~ learn1 + learn2 + learn3
+        ment_b  =~ sf12mcs
+        sf12mcs ~~ 0*sf12mcs
+        
+'
+
+fit4 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit4, fit.measures=TRUE)
+```
+
+## Learn and phys
+
+```{r}
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 
+        learn_w =~ learn1 + learn2 + learn3 + sf12pcs
+        ment_w  =~ sf12mcs
+        sf12mcs ~~ 0*sf12mcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 
+        learn_b =~ learn1 + learn2 + learn3 + sf12pcs
+        ment_b  =~ sf12mcs
+        sf12mcs ~~ 0*sf12mcs
+        
+'
+
+fit5 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit5, fit.measures=TRUE)
+```
+
+## Learn and ment
+
+```{r}
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 
+        learn_w =~ learn1 + learn2 + learn3 + sf12mcs
+        phys_w  =~ sf12pcs
+        sf12pcs ~~ 0*sf12pcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 
+        learn_b =~ learn1 + learn2 + learn3 + sf12mcs
+        phys_b  =~ sf12pcs
+        sf12pcs ~~ 0*sf12pcs
+        
+'
+
+fit6 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit6, fit.measures=TRUE)
+```
+
+## Phys and ment
+
+```{r}
+
+model <- '
+    level: 1
+        vita_w  =~  vitality1 + vitality2 + vitality5 
+        learn_w =~ learn1 + learn2 + learn3 + sf12mcs
+        phys_w  =~ sf12pcs + sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+
+        
+    level: 2
+        vita_b  =~  vitality1 + vitality2 + vitality5 
+        learn_b =~ learn1 + learn2 + learn3 + sf12mcs
+        phys_b  =~ sf12pcs + sf12mcs
+        sf12pcs ~~ 0*sf12pcs
+        sf12mcs ~~ 0*sf12mcs
+        
+'
+
+fit7 <- sem(model, data = longer, cluster = "ID", std.lv  = TRUE, verbose = FALSE, estimator="MLR")
+summary(fit7, fit.measures=TRUE)
+```
+
+
+
+```{r}
+library(semTools)
 summary(fit)
 
-fits <- compareFit(fit, fit2)
+fits <- compareFit(fit1, fit2)
 summary(fits)
+
+fits2 <- compareFit(fit1, fit3)
+summary(fits2)
+
+fits3 <- compareFit(fit1, fit4)
+summary(fits3)
+
+fits2 <- compareFit(fit, fit5)
+summary(fits2)
+
+fits2 <- compareFit(fit, fit6)
+summary(fits2)
+
+fits2 <- compareFit(fit, fit7)
+summary(fits2)
 
 fits2 <- compareFit(fit, fit3)
 summary(fits2)
