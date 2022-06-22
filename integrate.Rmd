@@ -30,24 +30,25 @@ knitr::opts_chunk$set(autodep        = TRUE,
                       warning        = FALSE)
 ```
 
-```{r libraries, cache = FALSE, include = FALSE}
+```{r libraries, eval = T, cache = FALSE, include = FALSE}
+source("./R/remote_functions.R")
+source("./R/MultilevelRSA.r")
 
 packages <- c("mediation", "foreign", "tidyverse","stargazer","multicon", "ggplot2", "plyr", "reshape2", "readxl", "haven", "sjlabelled", "janitor",
               "scales", "grid", "tidyLPA", "Rcpp", "naniar", "dplyr", "car", "mice", "lubridate", "zoo", "purrr", "rlang", "mgsub", "datapasta", "stringr",
-              "rstudioapi", "labelled", "modi", "semPlot", "kulife", "knitr", "janitor", "DT", "sjlabelled", "kableExtra", 
+              "rstudioapi", "labelled", "modi", "semPlot","knitr", "janitor", "DT", "sjlabelled", "kableExtra", 
               "glue", "numform", "xtable", "officer", "Hmisc",
               "lme4", "lmerTest", "RSA", "gridExtra", "MuMIn", "misty", "performance",
-              "sjlabelled", "kableExtra", "flextable", "sjPlot", "reprex", "datapasta", "semoutput", "semTools",
-              "merTools", "xlsx")
-
-source("./R/remote_functions.R")
-source("./R/MultilevelRSA.r")
+              "sjlabelled", "kableExtra", "flextable", "sjPlot", "reprex", "datapasta", "semTools",
+              "merTools", "xlsx", "RRPP", "geomorph")
 
 ipak(packages)
 
 ```
 
 ```{r get_data, cache = FALSE, include = FALSE}
+
+
 options(knitr.table.format = function() {
   if (knitr::is_latex_output()) 'latex' else 'pandoc'
 })

@@ -3,9 +3,9 @@ unnamed-chunk-3
 setup	
 unnamed-chunk-5	corstar_select	.cache/Integrate/unnamed-chunk-5_ec3ffebde0adfe12467220e7c26237f5_meta
 unnamed-chunk-6	b0	b1	b2	b3	b4	b5	longer_comp	mphys_randomX_Y	name_vars	plotting_df
-unnamed-chunk-7	df	x	y	z	z_pred	.cache/Integrate/unnamed-chunk-7_275ef5e8e8ee7bea8f35125d0c73aeb6_meta
+unnamed-chunk-7	df	x	y	z	z_pred	.cache/Integrate/unnamed-chunk-7_2e9e9b9c2f06c62f9dccc8899a297134_meta
 unnamed-chunk-8	b0	b1	b2	b3	b4	b5	mment_randomX_Y	plotting_df
-unnamed-chunk-9	df	x	y	z	z_pred	.cache/Integrate/unnamed-chunk-9_67eeb359542a8d6f3646401fe78ca99b_meta
+unnamed-chunk-9	df	x	y	z	z_pred	.cache/Integrate/unnamed-chunk-9_1ced4740f1b51d7b99e838912f92cb11_meta
 unnamed-chunk-10	dataset	df	fit_compare	fit_table	fit.config	fit.metric	fit.strict	fit.strong	longFacNames	mod.config	mod.metric	mod.strict	mod.strong	model_configural	syntax.config	syntax.metric	syntax.strict	syntax.strong
 unnamed-chunk-11	longer_comp_l	mphys_random_thriv_lagged	mphys_randomX_Y_lagged	tab2
 unnamed-chunk-12	longer_comp_l	mment_random_thriv_lagged	mment_randomX_Y_lagged	tab2

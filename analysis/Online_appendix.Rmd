@@ -114,7 +114,6 @@ write.csv(plotting_df,"../../response_surface.csv", row.names = TRUE)
 
 ```{r echo= FALSE}
 library(plotly)
-library(geomorph)
 
 set.seed(123)
 
@@ -130,14 +129,14 @@ z_pred = (b0 + (b1*x) + (b2*y) + (b3*(x**2)) + (b4*(x*y)) + (b5*(y**2)))
 df <- data.frame(x, y, z, z_pred)
 
 plot_ly(z = df, type = "surface") %>% 
-  add_trace(text = "Data points", name = "Data point", data = df, x = x, y = y, z = z, mode = "markers", type = "scatter3d", 
+  add_trace(text = "Data points", name = "Data point", data = df, x = x, y = y, z = z, mode = "markers", type = "scatter3d",
             marker = list(size = 3.5, color = "#404788", symbol = 104)) %>%
   add_trace(text = "Prediction", name = "Prediction", data = df,  x = x, y = y, z = z_pred, type="mesh3d", color = "#efe350") %>%
   layout(showlegend = FALSE, 
          scene = list(
            xaxis = list(title = "Vitality"),
            yaxis = list(title = "Learning"),
-           zaxis = list(title = "Physical health"),
+           zaxis = list(title = "Physical health", range = c(3.2, 5.9)),
            aspectratio = list(x=1, y=1, z=1)))
 
 ```
@@ -193,7 +192,7 @@ plot_ly(z = df, type = "surface") %>%
          scene = list(
            xaxis = list(title = "Vitality"),
            yaxis = list(title = "Learning"),
-           zaxis = list(title = "Mental health"),
+           zaxis = list(title = "Mental health", range = c(2.8, 5.9)),
            aspectratio = list(x=1, y=1, z=1)))
 
 ```
@@ -212,8 +211,6 @@ $~$
 ## Measurement invariance
 
 ```{r}
-
-
 #Model fit statistics for the test of measurement invariance for vitality and learning across T1 to T4
 
 dataset <- read_csv("../../data/dataset.csv")
@@ -356,6 +353,7 @@ Lagged multilevel model including the effects of predictors measured at t-1 on p
 
 
 ```{r echo = FALSE}
+library(lme4)
 longer_comp_l <- read_csv("../../data/longer_comp_l.csv")
 
 mphys_randomX_Y_lagged<- lmer(Physical.health ~1 +Vitality+Learning+ Vitality.squared+ Vitality.x.learning +Learning.squared+

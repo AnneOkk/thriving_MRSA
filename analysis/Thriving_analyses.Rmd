@@ -597,7 +597,8 @@ rels <- cbind(rels_within, rels_between) %>% rbind(., matrix(data="", ncol=2, nr
 
 # Test-retest reliability
 
-```{r}
+```{r eval = F}
+library(psychTools)
 longer$set <- as.numeric(gsub("T|_", "", longer$set))
 longer_T1_T2 <- longer %>% filter(set == 2 | set == 3)
 pcs <- longer_T1_T2 %>% select(matches("sf12pf|sf12rp|sf12bp|sf12gh")) %>% names(.)
@@ -1310,7 +1311,7 @@ quantile(longer_comp$CWC_y, probs = c(0.05, 0.95))
 quantile(longer_comp$sf12pcs, probs = c(0.05, 0.95), na.rm = T)
 
 MLRSA_AverageSurfacePlot(mphys_randomX_Y,name_vars=c("CWC_x","CWC_y","CWC_x2","CWC_xy","CWC_y2"),
-                         outcome="sf12pcs",data=longer_comp, type = "interactive",
+                         outcome="sf12pcs",data=longer_comp, type = "interactive", 
                          axesStyles=list(LOC = list(lty="solid", lwd=2, col= "black")),
                          xlab="Vitality",ylab="Learning",zlab="Physical Health", bw = T,
                          panel.aspect = c(1,1))
@@ -1329,7 +1330,7 @@ plotting_df <- longer_comp %>% select(CWC_x, CWC_y, sf12pcs)
 pdf(file = "../figures/physhealplot.pdf")
 
 plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
-                type = "3d", surface = NULL, 
+                type = "3d", surface = NULL, zlim=c(3.2, 5.9),
                 points = 
                   list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
                        color = "transparent", cex = 0.07, out.mark = FALSE),
@@ -1434,7 +1435,7 @@ plotting_df <- longer_comp %>% select(CWC_x, CWC_y, sf12mcs)
 pdf(file = "../figures/menthealplot.pdf")
 
 plot <- plotRSA(b0=b0, x=b1, y=b2, x2=b3, xy=b4, y2=b5,
-                type = "3d", surface = NULL, 
+                type = "3d", surface = NULL, zlim = c(2.8, 5.9),
                 points = 
                   list(data = plotting_df, show = NA, value = "raw", jitter = 0.005, 
                        color = "transparent", cex = 0.07, out.mark = FALSE),
